@@ -24,7 +24,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -49,4 +49,24 @@ async def read_users_me(
 async def read_own_items(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
-    return [{"item_id": "Foo", "owner": current_user.username}]
+    from app.db_init import get_db_connection
+    conn = get_db_connection()
+    items = conn.execute('SELECT symbol, amount FROM portfolio WHERE user_id = ?', 
+                        (current_user.username,)).fetchall()
+    
+    # Also fetch active orders to show "reserved" amounts or just list them if needed
+    # For now, just return portfolio holdings plus dummy "owner" field to match existing pattern if any
+    
+    # Existing code returned: [{"item_id": "Foo", "owner": current_user.username}]
+    # We will return list of holdings
+    
+    result = []
+    for item in items:
+        result.append({
+            "item_id": item['symbol'], 
+            "amount": item['amount'],
+            "owner": current_user.username
+        })
+        
+    conn.close()
+    return result

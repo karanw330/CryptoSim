@@ -6,7 +6,13 @@ import threading
 from app.routes import webs, rest
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+from app import db_init
+
+# Initialize DB
+db_init.init_db()
+
 app = FastAPI(title="Stock Market Simulator")
+
 
 app.add_middleware(
     CORSMiddleware,
