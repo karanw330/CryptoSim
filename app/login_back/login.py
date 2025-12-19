@@ -1,23 +1,11 @@
 from fastapi import APIRouter
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
-from LoginPydanticModels import *
-import os
-from dotenv import load_dotenv
-load_dotenv()
-import jwt
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
-from pwdlib import PasswordHash
+from .LoginPydanticModels import *
+from .LoginFunctions import *
+
 Router = APIRouter()
 
-ALGORITHM = os.getenv("HASHING_ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-password_hash = PasswordHash.recommended()
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 @Router.post("/token")

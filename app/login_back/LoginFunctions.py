@@ -1,4 +1,24 @@
 from app.db_init import get_db_connection
+import os
+import jwt
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jwt.exceptions import InvalidTokenError
+from pwdlib import PasswordHash
+from dotenv import load_dotenv
+from .LoginPydanticModels import *
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
+ALGORITHM = os.getenv("HASHING_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+password_hash = PasswordHash.recommended()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 
 def verify_password(plain_password, hashed_password):
     return password_hash.verify(plain_password, hashed_password)
