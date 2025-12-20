@@ -1,5 +1,6 @@
-from fastapi import APIRouter
-from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from datetime import timedelta
 from typing import Annotated
 from .LoginPydanticModels import *
 from .LoginFunctions import *
@@ -10,7 +11,7 @@ Router = APIRouter()
 
 @Router.post("/token")
 async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Token:
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
