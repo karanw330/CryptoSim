@@ -1,23 +1,18 @@
-// State management
-        let currentForm = 'login'; // 'login', 'signup', 'otp-email', 'otp-verify'
+let currentForm = 'login';
         let otpUserEmail = '';
         let resendTimer = null;
         let resendCountdown = 30;
 
         // Backend simulation functions
         async function checkEmailExists(email) {
-            // Simulate API call to check if email exists in database
-            // Return true if email exists (for login), false if not
             return new Promise((resolve) => {
                 setTimeout(() => {
-                    // For demo: emails ending with @test.com exist
                     resolve(email.endsWith('@test.com'));
                 }, 500);
             });
         }
 
         async function sendOTP(email) {
-            // Simulate API call to send OTP to email
             return new Promise((resolve) => {
                 setTimeout(() => {
                     console.log(`OTP sent to ${email}`);
@@ -27,8 +22,6 @@
         }
 
         async function verifyOTP(email, otp) {
-            // Simulate API call to verify OTP
-            // For demo: OTP "123456" is always correct
             return new Promise((resolve) => {
                 setTimeout(() => {
                     resolve({ success: otp === '123456', message: otp === '123456' ? 'OTP verified' : 'Invalid OTP' });
@@ -37,7 +30,6 @@
         }
 
         async function registerUser(name, email, password) {
-            // Simulate API call to register new user
             return new Promise((resolve) => {
                 setTimeout(() => {
                     console.log(`User registered: ${name}, ${email}`);
@@ -47,95 +39,35 @@
         }
 
         async function loginUser(email, password) {
-            // Simulate API call to login user
             return new Promise((resolve) => {
                 setTimeout(() => {
-                    // For demo: password "password123" is correct
                     resolve({ success: password === 'password123', message: 'Login successful' });
                 }, 800);
             });
         }
 
-        // Form switching functions
+        // Form switching
         function showForm(formName) {
-            const loginForm = document.getElementById('loginForm');
-            const signupForm = document.getElementById('signupForm');
-            const otpEmailForm = document.getElementById('otpEmailForm');
-            const otpVerifyForm = document.getElementById('otpVerifyForm');
+            const forms = ['loginForm', 'signupForm', 'otpEmailForm', 'otpVerifyForm'];
 
-            // Hide all forms
-            loginForm.classList.remove('active');
-            loginForm.classList.add('hidden');
-            signupForm.classList.remove('active');
-            otpEmailForm.classList.remove('active');
-            otpVerifyForm.classList.remove('active');
+            forms.forEach(form => {
+                const formElement = document.getElementById(form);
+                if (formElement) {
+                    formElement.classList.add('hidden');
+                }
+            });
 
-            // Show requested form
             setTimeout(() => {
-                switch(formName) {
-                    case 'login':
-                        loginForm.classList.remove('hidden');
-                        loginForm.classList.add('active');
-                        currentForm = 'login';
-                        break;
-                    case 'signup':
-                        signupForm.classList.add('active');
-                        currentForm = 'signup';
-                        break;
-                    case 'otp-email':
-                        otpEmailForm.classList.add('active');
-                        currentForm = 'otp-email';
-                        break;
-                    case 'otp-verify':
-                        otpVerifyForm.classList.add('active');
-                        currentForm = 'otp-verify';
+                const targetForm = document.getElementById(formName);
+                if (targetForm) {
+                    targetForm.classList.remove('hidden');
+                    currentForm = formName;
+
+                    if (formName === 'otpVerifyForm') {
                         startResendTimer();
-                        break;
+                    }
                 }
             }, 300);
-        }
-
-        // Navigation event listeners
-        document.getElementById('showSignup').addEventListener('click', (e) => {
-            e.preventDefault();
-            showForm('signup');
-        });
-
-        document.getElementById('backToLogin').addEventListener('click', () => {
-            showForm('login');
-        });
-
-        document.getElementById('showLoginFromSignup').addEventListener('click', (e) => {
-            e.preventDefault();
-            showForm('login');
-        });
-
-        document.getElementById('backFromOTPEmail').addEventListener('click', () => {
-            showForm('login');
-        });
-
-        // OTP Login buttons
-        document.getElementById('otpLoginBtn').addEventListener('click', () => {
-            showForm('otp-email');
-        });
-
-        document.getElementById('signupOtpLoginBtn').addEventListener('click', () => {
-            showForm('otp-email');
-        });
-
-        document.getElementById('backToLoginFromOTP').addEventListener('click', (e) => {
-            e.preventDefault();
-            showForm('login');
-        });
-
-        document.getElementById('backFromOTPVerify').addEventListener('click', () => {
-            showForm('otp-email');
-            clearInterval(resendTimer);
-        });
-
-        // OTP Login initiation
-        function initiateOTPLogin() {
-            showForm('otp-email');
         }
 
         // Slideshow functionality
@@ -149,34 +81,20 @@
         ];
 
         let currentSlide = 0;
-        const leftPanel = document.querySelector('.login-left');
+        const leftPanel = document.getElementById('leftPanel');
 
         function showSlide(index) {
-            // Add stagger effect for smoother transition
             slides.forEach((slide, i) => {
                 slide.classList.remove('active');
-                // Add slight delay for non-active slides
-                if (i !== index) {
-                    setTimeout(() => {
-                        slide.style.transform = 'translateY(30px) scale(0.95)';
-                    }, 50);
-                }
             });
 
-            // Remove active from all indicators with stagger
             indicators.forEach((indicator, i) => {
-                setTimeout(() => {
-                    indicator.classList.remove('active');
-                }, i * 50);
+                indicator.classList.remove('active');
             });
 
-            // Show current slide with delay for smooth transition
             setTimeout(() => {
                 slides[index].classList.add('active');
                 indicators[index].classList.add('active');
-
-                // Smooth background transition
-                leftPanel.style.transition = 'background 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
                 leftPanel.style.background = backgrounds[index];
             }, 100);
 
@@ -188,10 +106,8 @@
             showSlide(next);
         }
 
-        // Auto-advance slideshow with smoother timing
         let slideInterval = setInterval(nextSlide, 5000);
 
-        // Pause on hover for better UX
         leftPanel.addEventListener('mouseenter', () => {
             clearInterval(slideInterval);
         });
@@ -200,10 +116,8 @@
             slideInterval = setInterval(nextSlide, 5000);
         });
 
-        // Manual slide navigation with smooth reset
         indicators.forEach((indicator, index) => {
             indicator.addEventListener('click', () => {
-                // Reset auto-advance timer when manually navigating
                 clearInterval(slideInterval);
                 showSlide(index);
                 slideInterval = setInterval(nextSlide, 5000);
@@ -211,26 +125,20 @@
         });
 
         // Password toggle functionality
-        const passwordToggles = [
-            { toggle: 'passwordToggle', input: 'password' },
-            { toggle: 'signupPasswordToggle', input: 'signupPassword' },
-            { toggle: 'signupConfirmPasswordToggle', input: 'signupConfirmPassword' }
-        ];
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('password-toggle')) {
+                const targetId = e.target.getAttribute('data-target');
+                const passwordInput = document.getElementById(targetId);
 
-        passwordToggles.forEach(({ toggle, input }) => {
-            const toggleBtn = document.getElementById(toggle);
-            const passwordInput = document.getElementById(input);
-
-            if (toggleBtn && passwordInput) {
-                toggleBtn.addEventListener('click', function() {
+                if (passwordInput) {
                     const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                     passwordInput.setAttribute('type', type);
-                    this.textContent = type === 'password' ? '👁️' : '🙈';
-                });
+                    e.target.textContent = type === 'password' ? '👁️' : '🙈';
+                }
             }
         });
 
-        // Form validation
+        // Validation functions
         function validateEmail(email) {
             const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return re.test(email);
@@ -242,68 +150,99 @@
 
         function showError(inputId, message) {
             const errorElement = document.getElementById(inputId + 'Error');
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-            document.getElementById(inputId).style.borderColor = '#ff6b6b';
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.style.borderColor = '#ff6b6b';
+                }
+            }
         }
 
         function hideError(inputId) {
             const errorElement = document.getElementById(inputId + 'Error');
-            errorElement.style.display = 'none';
-            document.getElementById(inputId).style.borderColor = '#3a3a4a';
+            if (errorElement) {
+                errorElement.style.display = 'none';
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.style.borderColor = '#3a3a4a';
+                }
+            }
         }
 
-        function showSuccess(message) {
-            const successElement = document.getElementById('successMessage');
-            successElement.textContent = message;
-            successElement.style.display = 'block';
+        function showSuccess(elementId, message) {
+            const successElement = document.getElementById(elementId);
+            if (successElement) {
+                successElement.textContent = message;
+                successElement.style.display = 'block';
+            }
         }
 
-        // Real-time validation
-        document.getElementById('email').addEventListener('input', function() {
-            const email = this.value;
-            if (email && !validateEmail(email)) {
-                showError('email', 'Please enter a valid email address');
-            } else {
-                hideError('email');
-            }
+        // Navigation
+        document.getElementById('showSignupBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            showForm('signupForm');
         });
 
-        document.getElementById('password').addEventListener('input', function() {
-            const password = this.value;
-            if (password && !validatePassword(password)) {
-                showError('password', 'Password must be at least 6 characters long');
-            } else {
-                hideError('password');
-            }
+        document.getElementById('backToLoginBtn').addEventListener('click', () => {
+            showForm('loginForm');
         });
 
-        // Form submission
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        document.getElementById('showLoginBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            showForm('loginForm');
+        });
+
+        document.getElementById('otpLoginBtn').addEventListener('click', () => {
+            showForm('otpEmailForm');
+        });
+
+        document.getElementById('otpSignupBtn').addEventListener('click', () => {
+            showForm('otpEmailForm');
+        });
+
+        document.getElementById('googleLoginBtn').addEventListener('click', () => {
+            console.log('Initiating Google login...');
+            alert('Google OAuth integration would be implemented here.\n\nIn production, this would:\n1. Open Google login popup\n2. Handle OAuth authentication\n3. Redirect to dashboard on success');
+        });
+
+        document.getElementById('googleSignupBtn').addEventListener('click', () => {
+            console.log('Initiating Google signup...');
+            alert('Google OAuth integration would be implemented here.\n\nIn production, this would:\n1. Open Google login popup\n2. Handle OAuth authentication\n3. Create account and redirect to dashboard');
+        });
+
+        document.getElementById('backFromOTPEmailBtn').addEventListener('click', () => {
+            showForm('loginForm');
+        });
+
+        document.getElementById('backToLoginFromOTPBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            showForm('loginForm');
+        });
+
+        document.getElementById('backFromOTPVerifyBtn').addEventListener('click', () => {
+            showForm('otpEmailForm');
+            if (resendTimer) clearInterval(resendTimer);
+        });
+
+        // Login form submission
+        document.getElementById('loginFormElement').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const rememberMe = document.getElementById('rememberMe').checked;
 
             let isValid = true;
 
-            // Validate email
-            if (!email) {
-                showError('email', 'Email is required');
-                isValid = false;
-            } else if (!validateEmail(email)) {
+            if (!email || !validateEmail(email)) {
                 showError('email', 'Please enter a valid email address');
                 isValid = false;
             } else {
                 hideError('email');
             }
 
-            // Validate password
-            if (!password) {
-                showError('password', 'Password is required');
-                isValid = false;
-            } else if (!validatePassword(password)) {
+            if (!password || !validatePassword(password)) {
                 showError('password', 'Password must be at least 6 characters long');
                 isValid = false;
             } else {
@@ -319,26 +258,15 @@
                     const result = await loginUser(email, password);
 
                     if (result.success) {
-                        showSuccess('Login successful! Redirecting to dashboard...');
-
-                        const userData = {
-                            email: email,
-                            rememberMe: rememberMe,
-                            loginTime: new Date().toISOString()
-                        };
-
-                        console.log('Login successful:', userData);
-
-                        setTimeout(() => {
-                            redirectToHomePage();
-                        }, 2000);
+                        showSuccess('successMessage', 'Login successful! Redirecting...');
+                        setTimeout(() => redirectToHomePage(), 2000);
                     } else {
                         showError('password', 'Invalid email or password');
                         loginBtn.textContent = 'Sign In';
                         loginBtn.disabled = false;
                     }
                 } catch (error) {
-                    showError('password', 'An error occurred. Please try again.');
+                    showError('password', 'An error occurred');
                     loginBtn.textContent = 'Sign In';
                     loginBtn.disabled = false;
                 }
@@ -346,7 +274,7 @@
         });
 
         // Signup form submission
-        document.getElementById('signupForm').addEventListener('submit', async function(e) {
+        document.getElementById('signupFormElement').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const name = document.getElementById('signupName').value;
@@ -356,7 +284,6 @@
 
             let isValid = true;
 
-            // Validate name
             if (!name || name.trim().length < 2) {
                 showError('signupName', 'Please enter your full name');
                 isValid = false;
@@ -364,33 +291,21 @@
                 hideError('signupName');
             }
 
-            // Validate email
-            if (!email) {
-                showError('signupEmail', 'Email is required');
-                isValid = false;
-            } else if (!validateEmail(email)) {
+            if (!email || !validateEmail(email)) {
                 showError('signupEmail', 'Please enter a valid email address');
                 isValid = false;
             } else {
                 hideError('signupEmail');
             }
 
-            // Validate password
-            if (!password) {
-                showError('signupPassword', 'Password is required');
-                isValid = false;
-            } else if (password.length < 8) {
+            if (!password || password.length < 8) {
                 showError('signupPassword', 'Password must be at least 8 characters long');
                 isValid = false;
             } else {
                 hideError('signupPassword');
             }
 
-            // Validate confirm password
-            if (!confirmPassword) {
-                showError('signupConfirmPassword', 'Please confirm your password');
-                isValid = false;
-            } else if (password !== confirmPassword) {
+            if (password !== confirmPassword) {
                 showError('signupConfirmPassword', 'Passwords do not match');
                 isValid = false;
             } else {
@@ -406,18 +321,15 @@
                     const result = await registerUser(name, email, password);
 
                     if (result.success) {
-                        document.getElementById('signupSuccessMessage').style.display = 'block';
-
-                        setTimeout(() => {
-                            redirectToHomePage();
-                        }, 2000);
+                        showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
+                        setTimeout(() => redirectToHomePage(), 2000);
                     } else {
-                        showError('signupEmail', 'Email already exists or registration failed');
+                        showError('signupEmail', 'Registration failed');
                         signupBtn.textContent = 'Create Account';
                         signupBtn.disabled = false;
                     }
                 } catch (error) {
-                    showError('signupEmail', 'An error occurred. Please try again.');
+                    showError('signupEmail', 'An error occurred');
                     signupBtn.textContent = 'Create Account';
                     signupBtn.disabled = false;
                 }
@@ -425,15 +337,12 @@
         });
 
         // OTP Email form submission
-        document.getElementById('otpEmailForm').addEventListener('submit', async function(e) {
+        document.getElementById('otpEmailFormElement').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const email = document.getElementById('otpEmail').value;
 
-            if (!email) {
-                showError('otpEmail', 'Email is required');
-                return;
-            } else if (!validateEmail(email)) {
+            if (!email || !validateEmail(email)) {
                 showError('otpEmail', 'Please enter a valid email address');
                 return;
             }
@@ -450,17 +359,15 @@
                     otpUserEmail = email;
 
                     submitBtn.textContent = 'Sending OTP...';
-                    const result = await sendOTP(email);
+                    await sendOTP(email);
 
-                    if (result.success) {
-                        document.getElementById('otpSentMessage').textContent = `Enter the 6-digit code sent to ${email}`;
-                        showForm('otp-verify');
-                    }
+                    document.getElementById('otpSentMessage').textContent = `Enter the 6-digit code sent to ${email}`;
+                    showForm('otpVerifyForm');
                 } else {
                     showError('otpEmail', 'Email not registered. Please sign up first.');
                 }
             } catch (error) {
-                showError('otpEmail', 'An error occurred. Please try again.');
+                showError('otpEmail', 'An error occurred');
             } finally {
                 submitBtn.textContent = 'Send OTP';
                 submitBtn.disabled = false;
@@ -504,7 +411,7 @@
         });
 
         // OTP Verify form submission
-        document.getElementById('otpVerifyForm').addEventListener('submit', async function(e) {
+        document.getElementById('otpVerifyFormElement').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const otpValues = Array.from(otpInputs).map(input => input.value);
@@ -526,21 +433,18 @@
                     hideError('otpVerify');
                     submitBtn.textContent = 'Success!';
 
-                    setTimeout(() => {
-                        redirectToHomePage();
-                    }, 1000);
+                    setTimeout(() => redirectToHomePage(), 1000);
                 } else {
                     showError('otpVerify', 'Invalid OTP. Please try again.');
                     otpInputs.forEach(input => input.value = '');
                     otpInputs[0].focus();
-                }
-            } catch (error) {
-                showError('otpVerify', 'An error occurred. Please try again.');
-            } finally {
-                if (!result || !result.success) {
                     submitBtn.textContent = 'Verify & Login';
                     submitBtn.disabled = false;
                 }
+            } catch (error) {
+                showError('otpVerify', 'An error occurred');
+                submitBtn.textContent = 'Verify & Login';
+                submitBtn.disabled = false;
             }
         });
 
@@ -549,6 +453,8 @@
             resendCountdown = 30;
             const resendBtn = document.getElementById('resendOTPBtn');
             const timerDiv = document.getElementById('resendTimer');
+
+            if (!resendBtn || !timerDiv) return;
 
             resendBtn.disabled = true;
 
@@ -569,21 +475,18 @@
             this.textContent = 'Sending...';
 
             try {
-                const result = await sendOTP(otpUserEmail);
+                await sendOTP(otpUserEmail);
 
-                if (result.success) {
-                    this.textContent = 'Resend OTP';
-                    startResendTimer();
+                this.textContent = 'Resend OTP';
+                startResendTimer();
 
-                    // Show temporary success message
-                    const timer = document.getElementById('resendTimer');
-                    timer.textContent = 'OTP sent successfully!';
-                    timer.style.color = '#51cf66';
+                const timer = document.getElementById('resendTimer');
+                timer.textContent = 'OTP sent successfully!';
+                timer.style.color = '#51cf66';
 
-                    setTimeout(() => {
-                        timer.style.color = '#808080';
-                    }, 3000);
-                }
+                setTimeout(() => {
+                    timer.style.color = '#808080';
+                }, 3000);
             } catch (error) {
                 this.textContent = 'Resend OTP';
                 this.disabled = false;
@@ -592,7 +495,6 @@
 
         // Redirect to home page
         function redirectToHomePage() {
-            // Create and show home page
             document.body.innerHTML = `
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
                     <div style="text-align: center; padding: 40px;">
@@ -606,17 +508,7 @@
             `;
         }
 
-        // Social login function
-        function socialLogin(provider) {
-            if (provider === 'google') {
-                console.log('Initiating Google login...');
-                // Here you would integrate with Google OAuth
-                // Example: window.location.href = 'https://accounts.google.com/oauth/authorize?...'
-                alert('Google OAuth integration would be implemented here');
-            }
-        }
-
-        // Add smooth animations on page load
+        // Page load animation
         window.addEventListener('load', function() {
             const loginContainer = document.querySelector('.login-container');
             loginContainer.style.opacity = '0';
@@ -627,16 +519,4 @@
                 loginContainer.style.opacity = '1';
                 loginContainer.style.transform = 'translateY(0)';
             }, 100);
-        });
-
-        // Add focus effects
-        const inputs = document.querySelectorAll('.form-input');
-        inputs.forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.classList.add('focused');
-            });
-
-            input.addEventListener('blur', function() {
-                this.parentElement.classList.remove('focused');
-            });
         });
