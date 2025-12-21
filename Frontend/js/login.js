@@ -39,11 +39,24 @@ let currentForm = 'login';
         }
 
         async function loginUser(email, password) {
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve({ success: password === 'password123', message: 'Login successful' });
-                }, 800);
-            });
+            const res = await fetch('http://localhost:8000/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                email: email,
+                password: password
+                })
+            })
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.detail || 'Login failed');
+            }
+
+            return data;
+
         }
 
         // Form switching
@@ -257,7 +270,7 @@ let currentForm = 'login';
                 try {
                     const result = await loginUser(email, password);
 
-                    if (result.success) {
+                    if (result.access_token) {
                         showSuccess('successMessage', 'Login successful! Redirecting...');
                         setTimeout(() => redirectToHomePage(), 2000);
                     } else {
@@ -495,17 +508,18 @@ let currentForm = 'login';
 
         // Redirect to home page
         function redirectToHomePage() {
-            document.body.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-                    <div style="text-align: center; padding: 40px;">
-                        <h1 style="font-size: 3rem; margin-bottom: 20px;">📊 Welcome to TradeSnap</h1>
-                        <p style="font-size: 1.2rem; color: #b0b0b0; margin-bottom: 40px;">Your trading dashboard will be here</p>
-                        <div style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin: 10px;">
-                            Logged in successfully! ✓
-                        </div>
-                    </div>
-                </div>
-            `;
+            // document.body.innerHTML = `
+            //     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            //         <div style="text-align: center; padding: 40px;">
+            //             <h1 style="font-size: 3rem; margin-bottom: 20px;">📊 Welcome to TradeSnap</h1>
+            //             <p style="font-size: 1.2rem; color: #b0b0b0; margin-bottom: 40px;">Your trading dashboard will be here</p>
+            //             <div style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin: 10px;">
+            //                 Logged in successfully! ✓
+            //             </div>
+            //         </div>
+            //     </div>
+            // `;
+            window.location.replace("./home.html")
         }
 
         // Page load animation

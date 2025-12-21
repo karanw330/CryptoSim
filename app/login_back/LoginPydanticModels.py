@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 fake_users_db = {
     "johndoe": {
@@ -10,6 +10,15 @@ fake_users_db = {
     }
 }
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: str | None = None
+    password: str
 
 class Token(BaseModel):
     access_token: str

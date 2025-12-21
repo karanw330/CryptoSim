@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+pyjwt
+requests
+websocket-client
+pwdlib[argon2]
+
+
