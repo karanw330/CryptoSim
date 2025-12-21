@@ -14,6 +14,12 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: str | None = None
+    password: str
+
 class Token(BaseModel):
     access_token: str
     token_type: str

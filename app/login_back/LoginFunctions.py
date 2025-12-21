@@ -40,6 +40,34 @@ def get_user(username: str):
     return None
 
 
+def create_user(user_data: UserCreate):
+    conn = get_db_connection()
+    try:
+        # Check if username or email already exists
+        existing_user = conn.execute(
+            'SELECT * FROM users WHERE username = ? OR email = ?',
+            (user_data.username, user_data.email)
+        ).fetchone()
+        
+        if existing_user:
+            return None
+        
+        hashed_pwd = get_password_hash(user_data.password)
+        conn.execute(
+            'INSERT INTO users (username, full_name, email, hashed_password, disabled, balance_usd) VALUES (?, ?, ?, ?, ?, ?)',
+            (user_data.username, user_data.full_name, user_data.email, hashed_pwd, 0, 100000.0)
+        )
+        conn.commit()
+        
+        # Return the created user (as UserInDB)
+        return get_user(user_data.username)
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        return None
+    finally:
+        conn.close()
+
+
 def authenticate_user(username: str, password: str):
     user = get_user(username)
     if not user:

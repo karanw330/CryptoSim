@@ -25,6 +25,17 @@ async def login_for_access_token(data : LoginRequest):
     return {"access_token":access_token, "token_type":"bearer"}
 
 
+@Router.post("/register", response_model=User)
+async def register_user(user_data: UserCreate):
+    user = create_user(user_data)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email already exists",
+        )
+    return user
+
+
 @Router.get("/users/me/", response_model=User)
 async def read_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)],
