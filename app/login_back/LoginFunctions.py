@@ -25,7 +25,9 @@ def verify_password(plain_password, hashed_password):
 
 
 def get_password_hash(password):
-    return password_hash.hash(password)
+    test = password_hash.hash(password)
+    print(test)
+    return test
 
 
 def get_user(username: str):
