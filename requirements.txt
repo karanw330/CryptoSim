@@ -5,5 +5,5 @@ pyjwt
 requests
 websocket-client
 pwdlib[argon2]
-
+pydantic
 
