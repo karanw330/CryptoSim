@@ -5,6 +5,13 @@ class LoginRequest(BaseModel):
     password: str | None = None
     sub: str | None = None
 
+class OTPRequest(BaseModel):
+    email: str
+
+class OTPVerify(BaseModel):
+    email: str
+    otp: str
+
 class UserCreate(BaseModel):
     username: str
     email: str
