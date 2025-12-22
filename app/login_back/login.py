@@ -42,6 +42,36 @@ async def register_user(user_data: UserCreate):
     return user
 
 
+@Router.post("/send-otp")
+async def send_otp_route(data: OTPRequest):
+    user = get_user(email=data.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email not registered"
+        )
+    
+    generate_otp(data.email)
+    return {"message": "OTP sent successfully"}
+
+
+@Router.post("/verify-otp", response_model=Token)
+async def verify_otp_route(data: OTPVerify):
+    user = verify_otp_logic(data.email, data.otp)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired OTP"
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
 @Router.get("/users/me/", response_model=User)
 async def read_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)],

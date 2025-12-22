@@ -1,6 +1,7 @@
 from app.db_init import get_db_connection
 import os
 import jwt
+import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
@@ -119,3 +120,33 @@ async def get_current_active_user(
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+# OTP In-memory store: {email: {"otp": str, "expires": datetime}}
+otp_store = {}
+
+def generate_otp(email: str):
+    otp = str(random.randint(100000, 999999))
+    expires = datetime.now(timezone.utc) + timedelta(minutes=5)
+    otp_store[email] = {"otp": otp, "expires": expires}
+    print(f"DEBUG: OTP for {email} is {otp}")
+    return otp
+
+def verify_otp_logic(email: str, otp: str):
+    if email not in otp_store:
+        return False
+    
+    stored_data = otp_store[email]
+    if datetime.now(timezone.utc) > stored_data["expires"]:
+        del otp_store[email]
+        return False
+    
+    if stored_data["otp"] == otp:
+        # Check if user exists (necessary for generating token)
+        user = get_user(email=email)
+        if user:
+            # Clear OTP after successful verification
+            del otp_store[email]
+            return user
+        
+    return False
