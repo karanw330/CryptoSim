@@ -34,6 +34,7 @@ async def login_for_access_token(data : LoginRequest):
 async def register_user(user_data: UserCreate):
     user = create_user(user_data)
     if "error" in user:
+        print(user)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=user["error"],

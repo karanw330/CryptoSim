@@ -2,7 +2,8 @@ from pydantic import BaseModel
 
 class LoginRequest(BaseModel):
     email: str
-    password: str
+    password: str | None = None
+    sub : str | None = None
 
 class UserCreate(BaseModel):
     username: str
@@ -28,3 +29,10 @@ class User(BaseModel):
 
 class UserInDB(User):
     hashed_password: str
+
+class OTPRequest(BaseModel):
+    email: str
+
+class OTPVerify(BaseModel):
+    email: str
+    otp: str

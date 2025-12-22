@@ -4,13 +4,6 @@ let resendTimer = null;
 let resendCountdown = 30;
 
 // Backend simulation functions
-async function checkEmailExists(email) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(email.endsWith('@test.com'));
-        }, 500);
-    });
-}
 
 async function sendOTP(email) {
     try {
@@ -51,12 +44,26 @@ async function verifyOTP(email, otp) {
 }
 
 async function registerUser(name, email, password) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            console.log(`User registered: ${name}, ${email}`);
-            resolve({ success: true, message: 'User registered successfully' });
-        }, 1000);
-    });
+    console.log(name, email, password);
+    try {
+        const res = await fetch('http://localhost:8000/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: name,
+                email: email,
+                password: password
+            })
+        });
+
+        const data = await res.json();
+        return { ok: res.ok, data: data };
+    } catch (error) {
+        console.error('Registration fetch error:', error);
+        return { ok: false, error: error.message || 'Network error' };
+    }
 }
 
 async function loginUser(email, password) {
@@ -236,16 +243,6 @@ document.getElementById('otpSignupBtn').addEventListener('click', () => {
     showForm('otpEmailForm');
 });
 
-document.getElementById('googleLoginBtn').addEventListener('click', () => {
-    console.log('Initiating Google login...');
-    alert('Google OAuth integration would be implemented here.\n\nIn production, this would:\n1. Open Google login popup\n2. Handle OAuth authentication\n3. Redirect to dashboard on success');
-});
-
-document.getElementById('googleSignupBtn').addEventListener('click', () => {
-    console.log('Initiating Google signup...');
-    alert('Google OAuth integration would be implemented here.\n\nIn production, this would:\n1. Open Google login popup\n2. Handle OAuth authentication\n3. Create account and redirect to dashboard');
-});
-
 document.getElementById('backFromOTPEmailBtn').addEventListener('click', () => {
     showForm('loginForm');
 });
@@ -269,7 +266,7 @@ document.getElementById('loginFormElement').addEventListener('submit', async fun
 
     let isValid = true;
 
-    if (!email || !validateEmail(email)) {
+    if (!email) {
         showError('email', 'Please enter a valid email address');
         isValid = false;
     } else {
@@ -552,3 +549,150 @@ window.addEventListener('load', function () {
         loginContainer.style.transform = 'translateY(0)';
     }, 100);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function decodeJWT(token) {
+    let base64Url = token.split(".")[1];
+    let base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    let jsonPayload = decodeURIComponent(
+        atob(base64)
+            .split("")
+            .map(function (c) {
+                return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+            })
+            .join("")
+    );
+    return JSON.parse(jsonPayload);
+}
+
+// Helper to store token and redirect
+function saveTokenAndRedirect(token) {
+    localStorage.setItem('token', token);
+    redirectToHomePage();
+}
+
+async function handleCredentialResponse(response) {
+    const responsePayload = decodeJWT(response.credential);
+
+    try {
+        // ---------------- LOGIN ----------------
+        if (currentForm === 'loginForm' || currentForm === 'login') {
+            const loginBtn = document.querySelector('#loginForm .login-btn');
+            if (loginBtn) {
+                loginBtn.textContent = 'Signing In...';
+                loginBtn.disabled = true;
+            }
+
+            const res = await fetch('http://localhost:8000/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: responsePayload.email,
+                    sub: String(responsePayload.sub)
+                })
+            });
+
+            const data = await res.json();
+
+            // ---- ERROR ----
+            if (!res.ok) {
+                let errorMsg = 'Login failed';
+                if (data && data.detail) {
+                    errorMsg = typeof data.detail === 'string' ? data.detail : (data.detail.content || errorMsg);
+                }
+
+                if (data.detail?.type === "user") {
+                    showError('email', errorMsg);
+                } else if (data.detail?.type === "password") {
+                    showError('password', errorMsg);
+                } else {
+                    showError('email', errorMsg);
+                }
+
+                if (loginBtn) {
+                    loginBtn.textContent = 'Sign In';
+                    loginBtn.disabled = false;
+                }
+                return;
+            }
+
+            // ---- SUCCESS ----
+            if ("access_token" in data) {
+                showSuccess('successMessage', 'Login successful! Redirecting...');
+                setTimeout(() => saveTokenAndRedirect(data.access_token), 2000);
+                return;
+            }
+
+            showError('email', 'Unexpected response');
+            if (loginBtn) {
+                loginBtn.textContent = 'Sign In';
+                loginBtn.disabled = false;
+            }
+        }
+
+        // ---------------- SIGNUP ----------------
+        else if (currentForm === 'signupForm') {
+            const signupBtn = document.querySelector('#signupForm .login-btn');
+            if (signupBtn) {
+                signupBtn.textContent = 'Creating Account...';
+                signupBtn.disabled = true;
+            }
+
+            const res = await fetch('http://localhost:8000/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: responsePayload.name,
+                    email: responsePayload.email,
+                    sub: String(responsePayload.sub),
+                })
+            });
+
+            const data = await res.json();
+
+            // ---- ERROR ----
+            if (!res.ok) {
+                let errorMsg = 'Registration failed';
+                if (data && data.detail) {
+                    errorMsg = typeof data.detail === 'string' ? data.detail : (data.detail.content || errorMsg);
+                }
+                showError('signupEmail', errorMsg);
+                if (signupBtn) {
+                    signupBtn.textContent = 'Create Account';
+                    signupBtn.disabled = false;
+                }
+                return;
+            }
+
+            // ---- SUCCESS ----
+            if ("access_token" in data) {
+                showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
+                setTimeout(() => saveTokenAndRedirect(data.access_token), 2000);
+                return;
+            }
+
+            showError('signupEmail', 'Unexpected response');
+            if (signupBtn) {
+                signupBtn.textContent = 'Create Account';
+                signupBtn.disabled = false;
+            }
+        }
+
+    } catch (err) {
+        console.error(err);
+        showError('email', 'Something went wrong. Please try again.');
+    }
+}

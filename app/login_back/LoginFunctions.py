@@ -52,7 +52,8 @@ def create_user(user_data: UserCreate):
         
         if existing_user:
             return {"error": "Username or email already exists"}
-        
+
+
         hashed_pwd = get_password_hash(user_data.password)
         conn.execute(
             'INSERT INTO users (username, email, sub, hashed_password, disabled, balance_usd) VALUES (?, ?, ?, ?, ?, ?)',
