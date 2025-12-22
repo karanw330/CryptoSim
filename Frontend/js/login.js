@@ -30,12 +30,33 @@ let currentForm = 'login';
         }
 
         async function registerUser(name, email, password) {
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    console.log(`User registered: ${name}, ${email}`);
-                    resolve({ success: true, message: 'User registered successfully' });
-                }, 1000);
-            });
+            // const mail = document.getElementById("signupEmail").value;
+            // const pass = document.getElementById("signupPassword").value;
+            const username = document.getElementById("signupName").value;
+            const res = await fetch('http://localhost:8000/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    email: email,
+                    password: password
+                })
+            })
+
+            const data = await res.json();
+            // console.log(data.detail);
+
+            // if (!res.ok) {
+            //     showError('signupEmail', data.detail);
+            //     throw new Error(data.detail || 'Login failed');
+            // }
+            // if(JSON.parse(data.detail)){
+            //     console.log("shabash");
+            // }
+
+            return data;
         }
 
         async function loginUser(email, password) {
@@ -51,9 +72,9 @@ let currentForm = 'login';
             })
             const data = await res.json();
 
-            if (!res.ok) {
-                throw new Error(data.detail || 'Login failed');
-            }
+            // if (!res.ok) {
+            //     throw new Error(data.detail.content || 'Login failed');
+            // }
 
             return data;
 
@@ -215,15 +236,15 @@ let currentForm = 'login';
             showForm('otpEmailForm');
         });
 
-        document.getElementById('googleLoginBtn').addEventListener('click', () => {
-            console.log('Initiating Google login...');
-            alert('Google OAuth integration would be implemented here.\n\nIn production, this would:\n1. Open Google login popup\n2. Handle OAuth authentication\n3. Redirect to dashboard on success');
-        });
+        // document.getElementById('googleLoginBtn').addEventListener('click', () => {
+        //     console.log('Initiating Google login...');
+        //     alert('Google OAuth integration would be implemented here.\n\nIn production, this would:\n1. Open Google login popup\n2. Handle OAuth authentication\n3. Redirect to dashboard on success');
+        // });
 
-        document.getElementById('googleSignupBtn').addEventListener('click', () => {
-            console.log('Initiating Google signup...');
-            alert('Google OAuth integration would be implemented here.\n\nIn production, this would:\n1. Open Google login popup\n2. Handle OAuth authentication\n3. Create account and redirect to dashboard');
-        });
+        // document.getElementById('googleSignupBtn').addEventListener('click', () => {
+        //     console.log('Initiating Google signup...');
+        //     alert('Google OAuth integration would be implemented here.\n\nIn production, this would:\n1. Open Google login popup\n2. Handle OAuth authentication\n3. Create account and redirect to dashboard');
+        // });
 
         document.getElementById('backFromOTPEmailBtn').addEventListener('click', () => {
             showForm('loginForm');
@@ -248,7 +269,7 @@ let currentForm = 'login';
 
             let isValid = true;
 
-            if (!email || !validateEmail(email)) {
+            if (!email) {
                 showError('email', 'Please enter a valid email address');
                 isValid = false;
             } else {
@@ -263,26 +284,65 @@ let currentForm = 'login';
             }
 
             if (isValid) {
-                const loginBtn = this.querySelector('.login-btn');
+                // const loginBtn = this.querySelector('.login-btn');
+                // loginBtn.textContent = 'Signing In...';
+                // loginBtn.disabled = true;
+                //
+                // try {
+                //     const result = await loginUser(email, password);
+                //
+                //     if ("access_token" in result) {
+                //         showSuccess('successMessage', 'Login successful! Redirecting...');
+                //         setTimeout(() => redirectToHomePage(), 2000);
+                //     } else {
+                //         if(result.detail.type === "user") {
+                //             showError('email', result.detail.content);
+                //         }
+                //         else{
+                //             showError('password', result.detail.content);
+                //         }
+                //         loginBtn.textContent = 'Sign In';
+                //         loginBtn.disabled = false;
+                //     }
+                // } catch (error) {
+                //     showError('password', 'An error occurred');
+                //     loginBtn.textContent = 'Sign In';
+                //     loginBtn.disabled = false;
+                // }
+                // DO NOT rely on `this` unless this function is bound to a form element
+                const loginBtn = document.querySelector('.login-btn');
                 loginBtn.textContent = 'Signing In...';
                 loginBtn.disabled = true;
 
                 try {
                     const result = await loginUser(email, password);
 
-                    if (result.access_token) {
+                    // ---- SUCCESS ----
+                    if ("access_token" in result) {
                         showSuccess('successMessage', 'Login successful! Redirecting...');
                         setTimeout(() => redirectToHomePage(), 2000);
-                    } else {
-                        showError('password', 'Invalid email or password');
-                        loginBtn.textContent = 'Sign In';
-                        loginBtn.disabled = false;
+                        return;
                     }
+
+                    // ---- ERROR FROM BACKEND ----
+                    if (result.detail?.type === "user") {
+                        showError('email', result.detail.content);
+                    } else if (result.detail?.type === "password") {
+                        showError('password', result.detail.content);
+                    } else {
+                        showError('email', 'Login failed');
+                    }
+
+                    loginBtn.textContent = 'Sign In';
+                    loginBtn.disabled = false;
+
                 } catch (error) {
+                    console.error(error);
                     showError('password', 'An error occurred');
                     loginBtn.textContent = 'Sign In';
                     loginBtn.disabled = false;
                 }
+
             }
         });
 
@@ -329,11 +389,9 @@ let currentForm = 'login';
                 const signupBtn = this.querySelector('.login-btn');
                 signupBtn.textContent = 'Creating Account...';
                 signupBtn.disabled = true;
-
+                const result = await registerUser(name, email, password);
                 try {
-                    const result = await registerUser(name, email, password);
-
-                    if (result.success) {
+                    if (result.username) {
                         showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
                         setTimeout(() => redirectToHomePage(), 2000);
                     } else {
@@ -342,7 +400,7 @@ let currentForm = 'login';
                         signupBtn.disabled = false;
                     }
                 } catch (error) {
-                    showError('signupEmail', 'An error occurred');
+                    showError('signupEmail', result.detail);
                     signupBtn.textContent = 'Create Account';
                     signupBtn.disabled = false;
                 }
@@ -508,17 +566,6 @@ let currentForm = 'login';
 
         // Redirect to home page
         function redirectToHomePage() {
-            // document.body.innerHTML = `
-            //     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-            //         <div style="text-align: center; padding: 40px;">
-            //             <h1 style="font-size: 3rem; margin-bottom: 20px;">📊 Welcome to TradeSnap</h1>
-            //             <p style="font-size: 1.2rem; color: #b0b0b0; margin-bottom: 40px;">Your trading dashboard will be here</p>
-            //             <div style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin: 10px;">
-            //                 Logged in successfully! ✓
-            //             </div>
-            //         </div>
-            //     </div>
-            // `;
             window.location.replace("./home.html")
         }
 
@@ -534,3 +581,124 @@ let currentForm = 'login';
                 loginContainer.style.transform = 'translateY(0)';
             }, 100);
         });
+
+
+
+
+
+
+
+
+         function decodeJWT(token) {
+
+        let base64Url = token.split(".")[1];
+        let base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+        let jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split("")
+            .map(function (c) {
+              return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+            })
+            .join("")
+        );
+        return JSON.parse(jsonPayload);
+      }
+
+        async function handleCredentialResponse(response) {
+    const responsePayload = decodeJWT(response.credential);
+
+    try {
+        // ---------------- LOGIN ----------------
+        if (currentForm === 'login') {
+            const loginBtn = document.querySelector('#loginForm .login-btn');
+            loginBtn.textContent = 'Signing In...';
+            loginBtn.disabled = true;
+
+            const res = await fetch('http://localhost:8000/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: responsePayload.email,
+                    sub: String(responsePayload.sub)
+                })
+            });
+
+            const data = await res.json();
+
+            // ---- ERROR ----
+            if (!res.ok) {
+                if (data.detail?.type === "user") {
+                    showError('email', data.detail.content);
+                } else if (data.detail?.type === "password") {
+                    showError('password', data.detail.content);
+                } else {
+                    showError('email', 'Login failed');
+                }
+
+                loginBtn.textContent = 'Sign In';
+                loginBtn.disabled = false;
+                return;
+            }
+
+            // ---- SUCCESS ----
+            if ("access_token" in data) {
+                showSuccess('successMessage', 'Login successful! Redirecting...');
+                setTimeout(() => redirectToHomePage(), 2000);
+                return;
+            }
+
+            // Fallback (should never happen)
+            showError('email', 'Unexpected response');
+            loginBtn.textContent = 'Sign In';
+            loginBtn.disabled = false;
+        }
+
+        // ---------------- SIGNUP ----------------
+        else if (currentForm === 'signupForm') {
+            const signupBtn = document.querySelector('#signupForm .login-btn');
+            signupBtn.textContent = 'Creating Account...';
+            signupBtn.disabled = true;
+
+            const res = await fetch('http://localhost:8000/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: responsePayload.name,
+                    email: responsePayload.email,
+                    sub: String(responsePayload.sub),
+                })
+            });
+
+            const data = await res.json();
+
+            // ---- ERROR ----
+            if (!res.ok) {
+                showError('signupEmail', data.detail?.content || 'Registration failed');
+                signupBtn.textContent = 'Create Account';
+                signupBtn.disabled = false;
+                return;
+            }
+
+            // ---- SUCCESS ----
+            showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
+            setTimeout(() => redirectToHomePage(), 2000);
+        }
+
+    } catch (err) {
+        console.error(err);
+        showError('email', 'Something went wrong. Please try again.');
+    }
+}
+
+
+
+
+      // }
+      //   console.log("Decoded JWT ID token fields:");
+      //   console.log("  Full Name: " + responsePayload.name);
+      //   console.log("  Given Name: " + responsePayload.given_name);
+      //   console.log("  Family Name: " + responsePayload.family_name);
+      //   console.log("  Unique ID: " + responsePayload.sub);
+      //   console.log("  Profile image URL: " + responsePayload.picture);
+      //   console.log("  Email: " + responsePayload.email);
+      // }

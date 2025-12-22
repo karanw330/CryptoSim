@@ -12,11 +12,16 @@ Router = APIRouter()
 @Router.post("/token", response_model=Token)
 async def login_for_access_token(data : LoginRequest):
     # form_data will be an instance of OAuth2PasswordRequestForm provided by FastAPI
-    user = authenticate_user(data.email, data.password)
-    if not user:
+    if (data.sub is not None) and (data.sub != ""):
+        user = authenticate_google_user(data.sub)
+        print("user authenticated via google:", user)
+    else:
+        user = authenticate_user(data.email, data.password)
+        print("user authenticated via email:", user)
+    if "error" in user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail=user["error"],
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -28,11 +33,12 @@ async def login_for_access_token(data : LoginRequest):
 @Router.post("/register", response_model=User)
 async def register_user(user_data: UserCreate):
     user = create_user(user_data)
-    if not user:
+    if "error" in user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username or email already exists",
+            detail=user["error"],
         )
+    print(user)
     return user
 
 

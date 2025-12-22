@@ -30,9 +30,9 @@ def get_password_hash(password):
     return test
 
 
-def get_user(username: str):
+def get_user(username: str | None = None, email: str | None = None, sub: str | None = None):
     conn = get_db_connection()
-    user_row = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+    user_row = conn.execute('SELECT * FROM users WHERE username = ? OR email = ? OR sub = ?', (username,email,sub)).fetchone()
     conn.close()
     
     if user_row:
@@ -45,37 +45,42 @@ def create_user(user_data: UserCreate):
     try:
         # Check if username or email already exists
         existing_user = conn.execute(
-            'SELECT * FROM users WHERE username = ? OR email = ?',
-            (user_data.username, user_data.email)
+            'SELECT * FROM users WHERE username = ? OR email = ? OR sub = ?',
+            (user_data.username, user_data.email, user_data.sub)
         ).fetchone()
         
         if existing_user:
-            return None
+            return {"error": "Username or email already exists"}
         
         hashed_pwd = get_password_hash(user_data.password)
         conn.execute(
-            'INSERT INTO users (username, full_name, email, hashed_password, disabled, balance_usd) VALUES (?, ?, ?, ?, ?, ?)',
-            (user_data.username, user_data.full_name, user_data.email, hashed_pwd, 0, 100000.0)
+            'INSERT INTO users (username, email, sub, hashed_password, disabled, balance_usd) VALUES (?, ?, ?, ?, ?, ?)',
+            (user_data.username, user_data.email, user_data.sub, hashed_pwd, 0, 100000.0)
         )
         conn.commit()
         
         # Return the created user (as UserInDB)
-        return get_user(user_data.username)
+        return get_user(user_data.username, user_data.email, user_data.sub)
     except Exception as e:
         print(f"Error creating user: {e}")
-        return None
+        return {"error": "Failed to create user"}
     finally:
         conn.close()
 
 
 def authenticate_user(username: str, password: str):
-    user = get_user(username)
+    user = get_user(username= username)
     if not user:
-        return False
+        return {"error": {"type":"user", "content":"User not found"}}
     if not verify_password(password, user.hashed_password):
-        return False
+        return {"error": {"type":"password", "content":"Incorrect password"}}
     return user
 
+def authenticate_google_user(sub: str):
+    user = get_user(sub=sub)
+    if not user:
+        return {"error": {"type":"user", "content":"User not found"}}
+    return user
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
