@@ -11,7 +11,6 @@ Router = APIRouter()
 
 @Router.post("/token", response_model=Token)
 async def login_for_access_token(data : LoginRequest):
-    # form_data will be an instance of OAuth2PasswordRequestForm provided by FastAPI
     if (data.sub is not None) and (data.sub != ""):
         user = authenticate_google_user(data.sub)
         print("user authenticated via google:", user)
@@ -30,7 +29,7 @@ async def login_for_access_token(data : LoginRequest):
     return {"access_token":access_token, "token_type":"bearer"}
 
 
-@Router.post("/register", response_model=User)
+@Router.post("/register", response_model=Token)
 async def register_user(user_data: UserCreate):
     user = create_user(user_data)
     if "error" in user:
@@ -39,8 +38,11 @@ async def register_user(user_data: UserCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=user["error"],
         )
-    print(user)
-    return user
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @Router.post("/send-otp")

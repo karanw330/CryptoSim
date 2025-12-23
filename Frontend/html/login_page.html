@@ -51,7 +51,7 @@
 
                     <form id="loginFormElement">
                         <div class="form-group">
-                            <input  class="form-input" id="email" placeholder="Email address" required>
+                            <input  class="form-input" id="email" placeholder="Username/Email" required>
                             <div class="error-message" id="emailError"></div>
                         </div>
 
@@ -112,7 +112,7 @@
                         </div>
 
                         <div class="form-group">
-                            <input type="email" class="form-input" id="signupEmail" placeholder="Email address" required>
+                            <input class="form-input" id="signupEmail" placeholder="Email address" required>
                             <div class="error-message" id="signupEmailError"></div>
                         </div>
 
@@ -132,7 +132,7 @@
                             <div class="error-message" id="signupConfirmPasswordError"></div>
                         </div>
 
-                        <button type="submit" class="login-btn">Create Account</button>
+                        <button type="submit" class="login-btn" id="createAccBtn">Create Account</button>
 
                         <div class="success-message" id="signupSuccessMessage">Account created! Redirecting...</div>
                     </form>
@@ -159,9 +159,6 @@
                             ></div>
                             <!-- g_id_signin places the button on a page and supports customization -->
                             <div class="g_id_signin" style="width:100%" data-text="signup_with"></div>
-                        <button type="button" class="social-btn" id="otpSignupBtn">
-                            📱 Continue with OTP
-                        </button>
                     </div>
 
                     <div class="signup-link">

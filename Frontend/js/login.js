@@ -44,8 +44,7 @@ async function verifyOTP(email, otp) {
 }
 
 async function registerUser(name, email, password) {
-    console.log(name, email, password);
-    try {
+    const signupBtn = document.getElementById("createAccBtn");
         const res = await fetch('http://localhost:8000/register', {
             method: 'POST',
             headers: {
@@ -59,11 +58,35 @@ async function registerUser(name, email, password) {
         });
 
         const data = await res.json();
-        return { ok: res.ok, data: data };
-    } catch (error) {
-        console.error('Registration fetch error:', error);
-        return { ok: false, error: error.message || 'Network error' };
-    }
+        if (!res.ok) {
+                signupBtn.textContent = 'Create Account';
+            signupBtn.disabled = false;//// res is ok when status code is 2XX
+                if(data.detail.type === 'user'){
+                    showError('signupEmail', data.detail.content);
+                    throw new Error('user');
+                } else if(data.detail.type === "password"){
+                    showError('signupPassword', data.detail.content);
+                    throw new Error('password');
+                } else {
+                    showError('signupEmail' , data.detail || 'Registration failed');
+                    throw new Error('unknown');
+                }
+
+            }
+
+            // ---- SUCCESS ----
+            if ("access_token" in data) {
+                showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
+                await hideSignUpErrors();
+                setTimeout(() => saveTokenAndRedirect(data.access_token), 2000);
+                return;
+            }
+
+            showError('signupEmail', 'Unexpected response');
+            if (signupBtn) {
+                signupBtn.textContent = 'Create Account';
+                signupBtn.disabled = false;
+            }
 }
 
 async function loginUser(email, password) {
@@ -98,6 +121,7 @@ async function loginUser(email, password) {
 
     if (result.access_token) {
                 showSuccess('successMessage', 'Login successful! Redirecting...');
+                await hideLoginErrors();
                 setTimeout(() => redirectToHomePage(), 2000);
             } else {
                 showError('password', 'Invalid email or password');
@@ -263,10 +287,6 @@ document.getElementById('otpLoginBtn').addEventListener('click', () => {
     showForm('otpEmailForm');
 });
 
-document.getElementById('otpSignupBtn').addEventListener('click', () => {
-    showForm('otpEmailForm');
-});
-
 document.getElementById('backFromOTPEmailBtn').addEventListener('click', () => {
     showForm('loginForm');
 });
@@ -358,22 +378,7 @@ document.getElementById('signupFormElement').addEventListener('submit', async fu
         signupBtn.textContent = 'Creating Account...';
         signupBtn.disabled = true;
 
-        try {
-            const result = await registerUser(name, email, password);
-
-            if (result.success) {
-                showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
-                setTimeout(() => redirectToHomePage(), 2000);
-            } else {
-                showError('signupEmail', 'Registration failed');
-                signupBtn.textContent = 'Create Account';
-                signupBtn.disabled = false;
-            }
-        } catch (error) {
-            showError('signupEmail', 'An error occurred');
-            signupBtn.textContent = 'Create Account';
-            signupBtn.disabled = false;
-        }
+        const result = await registerUser(name, email, password);
     }
 });
 
@@ -632,6 +637,7 @@ async function handleCredentialResponse(response) {
             // ---- SUCCESS ----
             if ("access_token" in data) {
                 showSuccess('successMessage', 'Login successful! Redirecting...');
+                await hideLoginErrors();
                 setTimeout(() => saveTokenAndRedirect(data.access_token), 2000);
                 return;
             }
@@ -684,6 +690,7 @@ async function handleCredentialResponse(response) {
             // ---- SUCCESS ----
             if ("access_token" in data) {
                 showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
+                await hideSignUpErrors();
                 setTimeout(() => saveTokenAndRedirect(data.access_token), 2000);
                 return;
             }
@@ -694,4 +701,17 @@ async function handleCredentialResponse(response) {
                 signupBtn.disabled = false;
             }
         }
+}
+
+
+async function hideSignUpErrors() {
+    hideError('signupName');
+    hideError('signupEmail');
+    hideError('signupPassword');
+    hideError('signupConfirmPassword');
+}
+
+async function hideLoginErrors() {
+    hideError('email');
+    hideError('password');
 }
