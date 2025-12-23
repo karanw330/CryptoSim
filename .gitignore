@@ -50,3 +50,7 @@ test_main.http
 .cache/
 .mypy_cache/
 .pytest_cache/
+
+
+*.db
+*.sqlite3
