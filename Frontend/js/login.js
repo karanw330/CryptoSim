@@ -67,6 +67,7 @@ async function registerUser(name, email, password) {
 }
 
 async function loginUser(email, password) {
+    const loginBtn = document.getElementById("loginBtn");
     const res = await fetch('http://localhost:8000/token', {
         method: 'POST',
         headers: {
@@ -80,8 +81,31 @@ async function loginUser(email, password) {
     const data = await res.json();
 
     if (!res.ok) {
-        throw new Error(data.detail || 'Login failed');
+        console.log(data.detail);                        // res is ok when status code is 2XX
+        loginBtn.textContent = 'Sign In';
+                loginBtn.disabled = false;
+        if(data.detail.type === "user"){
+            showError("email", data.detail.content || 'User not found');
+            throw new Error('user');
+        } else if(data.detail.type === "password"){
+            showError("password", data.detail.content || 'Incorrect password');
+            throw new Error('password');
+        } else {
+            showError('email' , data.detail || 'Login failed');
+            throw new Error('unknown');
+        }
     }
+
+    if (result.access_token) {
+                showSuccess('successMessage', 'Login successful! Redirecting...');
+                setTimeout(() => redirectToHomePage(), 2000);
+            } else {
+                showError('password', 'Invalid email or password');
+                loginBtn.textContent = 'Sign In';
+                loginBtn.disabled = false;
+            }
+                loginBtn.textContent = 'Sign In';
+                loginBtn.disabled = false;
 
     return data;
 
@@ -285,22 +309,8 @@ document.getElementById('loginFormElement').addEventListener('submit', async fun
         loginBtn.textContent = 'Signing In...';
         loginBtn.disabled = true;
 
-        try {
-            const result = await loginUser(email, password);
+        const result = await loginUser(email, password);
 
-            if (result.access_token) {
-                showSuccess('successMessage', 'Login successful! Redirecting...');
-                setTimeout(() => redirectToHomePage(), 2000);
-            } else {
-                showError('password', 'Invalid email or password');
-                loginBtn.textContent = 'Sign In';
-                loginBtn.disabled = false;
-            }
-        } catch (error) {
-            showError('password', 'An error occurred');
-            loginBtn.textContent = 'Sign In';
-            loginBtn.disabled = false;
-        }
     }
 });
 
@@ -586,8 +596,6 @@ function saveTokenAndRedirect(token) {
 
 async function handleCredentialResponse(response) {
     const responsePayload = decodeJWT(response.credential);
-
-    try {
         // ---------------- LOGIN ----------------
         if (currentForm === 'loginForm' || currentForm === 'login') {
             const loginBtn = document.querySelector('#loginForm .login-btn');
@@ -598,35 +606,27 @@ async function handleCredentialResponse(response) {
 
             const res = await fetch('http://localhost:8000/token', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
                     email: responsePayload.email,
                     sub: String(responsePayload.sub)
                 })
-            });
-
+            })
             const data = await res.json();
 
-            // ---- ERROR ----
-            if (!res.ok) {
-                let errorMsg = 'Login failed';
-                if (data && data.detail) {
-                    errorMsg = typeof data.detail === 'string' ? data.detail : (data.detail.content || errorMsg);
-                }
-
-                if (data.detail?.type === "user") {
-                    showError('email', errorMsg);
-                } else if (data.detail?.type === "password") {
-                    showError('password', errorMsg);
+            if (!res.ok) {                   // res is ok when status code is 2XX
+                if(data.detail.type === "user"){
+                    showError('email', data.detail.content || 'User not found');
+                    throw new Error('user');
+                } else if(data.detail.type === "password"){
+                    showError('password', data.detail.content || 'Incorrect password');
+                    throw new Error('password');
                 } else {
-                    showError('email', errorMsg);
+                    showError('email' , data.detail || 'Login failed');
+                    throw new Error('unknown');
                 }
-
-                if (loginBtn) {
-                    loginBtn.textContent = 'Sign In';
-                    loginBtn.disabled = false;
-                }
-                return;
             }
 
             // ---- SUCCESS ----
@@ -665,16 +665,20 @@ async function handleCredentialResponse(response) {
 
             // ---- ERROR ----
             if (!res.ok) {
-                let errorMsg = 'Registration failed';
-                if (data && data.detail) {
-                    errorMsg = typeof data.detail === 'string' ? data.detail : (data.detail.content || errorMsg);
+                console.log(data.detail)
+                signupBtn.textContent = 'Create Account';
+            signupBtn.disabled = false;//// res is ok when status code is 2XX
+                if(data.detail.type === 'user'){
+                    showError('signupEmail', data.detail.content);
+                    throw new Error('user');
+                } else if(data.detail.type === "password"){
+                    showError('signupPassword', data.detail.content);
+                    throw new Error('password');
+                } else {
+                    showError('signupEmail' , data.detail || 'Registration failed');
+                    throw new Error('unknown');
                 }
-                showError('signupEmail', errorMsg);
-                if (signupBtn) {
-                    signupBtn.textContent = 'Create Account';
-                    signupBtn.disabled = false;
-                }
-                return;
+
             }
 
             // ---- SUCCESS ----
@@ -690,9 +694,4 @@ async function handleCredentialResponse(response) {
                 signupBtn.disabled = false;
             }
         }
-
-    } catch (err) {
-        console.error(err);
-        showError('email', 'Something went wrong. Please try again.');
-    }
 }

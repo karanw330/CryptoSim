@@ -51,10 +51,10 @@ def create_user(user_data: UserCreate):
         ).fetchone()
         
         if existing_user:
-            return {"error": "Username or email already exists"}
-
-
-        hashed_pwd = get_password_hash(user_data.password)
+            return {"error": {"type":"user", "content":"User with given username or email already exists"}}
+        hashed_pwd = ""
+        if "password" in user_data:
+            hashed_pwd = get_password_hash(user_data.password)
         conn.execute(
             'INSERT INTO users (username, email, sub, hashed_password, disabled, balance_usd) VALUES (?, ?, ?, ?, ?, ?)',
             (user_data.username, user_data.email, user_data.sub, hashed_pwd, 0, 100000.0)
@@ -65,7 +65,7 @@ def create_user(user_data: UserCreate):
         return get_user(user_data.username, user_data.email, user_data.sub)
     except Exception as e:
         print(f"Error creating user: {e}")
-        return {"error": "Failed to create user"}
+        return {"error": {"type":"password", "content":"Failed to create user"+str(e)}}
     finally:
         conn.close()
 
