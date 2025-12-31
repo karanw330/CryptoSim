@@ -24,9 +24,6 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
         # 1. Validate Balance / Portfolio
         user_id = current_user.username
         
-        # We need to fetch the user... but the endpoint is open. 
-        # Assuming single user 'johndoe' for this sim as per previous context
-        
         if data.order_type == "market" or data.order_type == "limit":
             # BUY: Check USD balance
             if data.order == "Buy":
@@ -80,6 +77,7 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
         # 3. Pass to Matching Engine (Optimistic)
         # We attach the real DB ID to the object so matching engine uses it
         data.order_id = order_id
+        data.user_id = user_id
         
         func = funcDict[data.order_type]
         print(f"Order {order_id} placed: {data}")

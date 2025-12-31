@@ -13,6 +13,7 @@ class OrderData(BaseModel):
     symbol: str
     date: str
     time: str
+    user_id: str | None = None
 
 class Del(BaseModel):
     order_id: int

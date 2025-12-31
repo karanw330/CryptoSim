@@ -162,10 +162,7 @@ async def limit(heap, security: str, last_price: float):
             heappop(heap)
             
             # EXECUTE DB UPDATE
-            # User ID hardcoded as 'johndoe' in rest.py, we need it here.
-            # We didn't save user_id in the Pydantic model 'OrderData'. 
-            # We must assume 'johndoe' or add it to model.
-            user_id = "johndoe" 
+            user_id = order.user_id or "johndoe" 
             
             execute_trade_db(
                 order_id=order_id,
@@ -188,11 +185,10 @@ async def limit(heap, security: str, last_price: float):
             })
             triggered_orders.append(order)
 
-        # SELL Limit: Execute if Market Price >= Limit Price
         elif order.order == "Sell" and last_price >= limit_price:
             heappop(heap)
             
-            user_id = "johndoe"
+            user_id = order.user_id or "johndoe"
             
             execute_trade_db(
                 order_id=order_id,
@@ -229,11 +225,10 @@ async def stop_loss(heap, security: str, last_price: float):
         if order.symbol != security:
             break
 
-        # BUY Stop: Execute if Market Price >= Stop Price
         if order.order == "Buy" and last_price >= stop_price:
             heappop(heap)
             
-            user_id = "johndoe"
+            user_id = order.user_id or "johndoe"
             execute_trade_db(order_id, security, last_price, order.order_quantity, "Buy", user_id)
 
             await manager.broadcast({
@@ -251,7 +246,7 @@ async def stop_loss(heap, security: str, last_price: float):
         elif order.order == "Sell" and last_price <= stop_price:
             heappop(heap)
             
-            user_id = "johndoe"
+            user_id = order.user_id or "johndoe"
             execute_trade_db(order_id, security, last_price, order.order_quantity, "Sell", user_id)
 
             await manager.broadcast({
