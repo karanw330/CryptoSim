@@ -154,3 +154,46 @@ async def read_own_items(
         
     conn.close()
     return result
+
+@Router.get("/users/me/orders")
+async def read_own_orders(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    from app.db_init import get_db_connection
+    conn = get_db_connection()
+    # Fetch active and pending orders
+    orders = conn.execute("SELECT * FROM orders WHERE user_id = ? AND status IN ('active', 'inactive')", 
+                         (current_user.username,)).fetchall()
+    conn.close()
+    
+    result = []
+    for order in orders:
+        result.append(dict(order))
+    return result
+
+@Router.get("/users/me/trades")
+async def read_own_trades(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    from app.db_init import get_db_connection
+    conn = get_db_connection()
+    # This might need a join with orders to get user_id if trades table doesn't have it
+    # Looking at db_init, trades table doesn't have user_id, but orders table does.
+    # Order status 'completed' has the trade price.
+    trades = conn.execute('''
+        SELECT t.*, o.side, o.order_type, o.user_id 
+        FROM trades t 
+        JOIN orders o ON t.symbol = o.symbol AND t.timestamp = o.timestamp
+        WHERE o.user_id = ?
+    ''', (current_user.username,)).fetchall()
+    
+    # Actually, a better way is to join on a trade_id if we had one in orders, 
+    # but for now let's just use completed orders as "trades" for the UI.
+    completed_orders = conn.execute("SELECT * FROM orders WHERE user_id = ? AND status = 'completed'", 
+                                 (current_user.username,)).fetchall()
+    conn.close()
+    
+    result = []
+    for order in completed_orders:
+        result.append(dict(order))
+    return result

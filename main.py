@@ -11,6 +11,9 @@ from app import db_init
 # Initialize DB
 db_init.init_db()
 
+from app.order_book import recover_active_orders
+recover_active_orders()
+
 app = FastAPI(title="Stock Market Simulator")
 
 

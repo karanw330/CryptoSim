@@ -1,10 +1,9 @@
 import heapq
 from heapq import heappush, heappop
-import datetime
-import pytz
 import json
 from app.manager import manager
 from app.db_init import get_db_connection
+from app.routes.PydanticModels import OrderData
 
 # =========================
 #   DB HELPERS
@@ -54,73 +53,84 @@ def execute_trade_db(order_id, symbol, price, quantity, side, user_id):
 from collections import defaultdict
 from typing import Dict, List, Tuple, Any
 
-# For normal limit and stop-limit (in your sim)
-limit_heaps: Dict[str, List[Tuple[float, int, Any]]] = defaultdict(list)
+# Heaps for different order types and directions
+# Buy Limit: Max-Heap (stores negative price to get highest first)
+# Sell Limit: Min-Heap (stores positive price to get lowest first)
+# Stop-Loss: Directional Min/Max Heaps based on trigger conditions
 
-# For stop-loss
-stop_loss_heaps: Dict[str, List[Tuple[float, int, Any]]] = defaultdict(list)
+limit_buy_heaps: Dict[str, List[Tuple[float, int, Any]]] = defaultdict(list)
+limit_sell_heaps: Dict[str, List[Tuple[float, int, Any]]] = defaultdict(list)
+stop_buy_heaps: Dict[str, List[Tuple[float, int, Any]]] = defaultdict(list)
+stop_sell_heaps: Dict[str, List[Tuple[float, int, Any]]] = defaultdict(list)
 
 
 # =========================
 #   ADD ORDER HELPERS
 # =========================
 
-async def market(details):
-    # Market Order is immediate execution at 'current' price (simulated)
-    # Since we don't have a real matching engine against other users, we execute against external price immediately
-    # BUT 'market' function here seems to be just for broadcast? 
-    # Let's assume market orders execute immediately if we have a price.
-    
-    print(details.dict())
-    data = details.dict()
-    
-    # Simulated execution:
-    # We need the last price... passed in? No.
-    # In this design, market orders might just be broadcasted as "active" 
-    # and then client simulation handles it? 
-    # OR we should execute it now if we knew the price.
-    
-    # For now, we just broadcast as original code, but maybe mark completed if we could?
-    # Original code: details["status"] = "active"
-    
-    # Update: Market orders in this sim seem to rely on the *Next* tick? 
-    # Or maybe we assume they are filled immediately at '0' price placeholder?
-    # Let's execute immediately if we can, but we lack price here. 
-    # We will execute it on the next price_tick or just broadcast.
-    
-    # Logic: Just broadcast. The 'price_tick' function only checks limit/stop heaps. 
-    # Market orders are usually instantaneous. 
-    
-    # Let's assume we treat it as 'active' and maybe frontend handles it? 
-    # OR we should store it and execute on next tick.
-    # Given the previous code, it just broadcasted.
-    
     details_dict = details.dict()
     details_dict["status"] = "active"
-    await manager.broadcast(json.dumps({"data_type":"new_order","data":details_dict}))
+    # New orders are broadcasted so everyone sees their own update? 
+    # Actually, new orders should also probably be send_to_user if they are private.
+    # But for simplicity, we can broadcast and let frontend filter, 
+    # OR better: use targeted messaging here too.
+    await manager.send_to_user(details.user_id, json.dumps({"data_type":"new_order","data":details_dict}))
+
+def recover_active_orders():
+    """Load active orders from DB into heaps on startup"""
+    conn = get_db_connection()
+    c = conn.cursor()
+    rows = c.execute("SELECT * FROM orders WHERE status = 'active'").fetchall()
+    conn.close()
+
+    count = 0
+    for row in rows:
+        order = OrderData(
+            order=row['side'],
+            order_id=row['order_id'],
+            entry_price=row['price'], 
+            order_type=row['order_type'],
+            order_quantity=row['quantity'],
+            order_price=row['price'],
+            limit_value=row['limit_value'],
+            stop_value=row['stop_value'],
+            status=row['status'],
+            symbol=row['symbol'],
+            date=row['timestamp'].split()[0] if row['timestamp'] else "",
+            time=row['timestamp'].split()[1] if row['timestamp'] else "",
+            user_id=row['user_id']
+        )
+        
+        symbol = order.symbol
+        if order.order_type in ["limit", "stop-limit"]:
+            if order.order == "Buy":
+                heappush(limit_buy_heaps[symbol], (-order.limit_value, order.order_id, order))
+            else:
+                heappush(limit_sell_heaps[symbol], (order.limit_value, order.order_id, order))
+        elif order.order_type == "stop-loss":
+            if order.order == "Buy":
+                heappush(stop_buy_heaps[symbol], (order.stop_value, order.order_id, order))
+            else:
+                heappush(stop_sell_heaps[symbol], (-order.stop_value, order.order_id, order))
+        count += 1
+    print(f"Recovered {count} active orders into matching engine.")
 
 
 async def add_limit_order(order):
     symbol = order.symbol
     limit_price = order.limit_value
-    order_id = order.order_id # Now real ID from DB
+    order_id = order.order_id
     
-    # Push to heap for matching
-    heap = limit_heaps[symbol]
-    # Heap stores: (price, order_id, order_object)
-    # Buy: Max heap? (negate price). Sell: Min heap?
-    # Original code didn't distinguish heap type/direction properly? 
-    # It just did: heapq.heappush(heap, (limit_price, order_id, order))
-    # Standard heapq is Min-Heap.
-    # For Sell Limit: We want to sell if Price >= Limit. We want to sell at lowest limit first? No, we match whatever.
-    # For Buy Limit: We want to buy if Price <= Limit.
-    
-    # Let's keep original logic form, but use real ID
-    heappush(heap, (limit_price, order_id, order))
+    if order.order == "Buy":
+        # Max-heap for buy limits: highest bid first
+        heappush(limit_buy_heaps[symbol], (-limit_price, order_id, order))
+    else:
+        # Min-heap for sell limits: lowest ask first
+        heappush(limit_sell_heaps[symbol], (limit_price, order_id, order))
     
     order_dict = order.dict()
-    order_dict["status"] = "inactive" # Wait for trigger
-    await manager.broadcast(json.dumps({"data_type": "new_order", "data": order_dict}))
+    order_dict["status"] = "inactive"
+    await manager.send_to_user(order.user_id, json.dumps({"data_type": "new_order", "data": order_dict}))
 
 
 async def add_stop_loss_order(order):
@@ -128,145 +138,98 @@ async def add_stop_loss_order(order):
     stop_price = order.stop_value
     order_id = order.order_id
     
-    heap = stop_loss_heaps[symbol]
-    heappush(heap, (stop_price, order_id, order))
+    if order.order == "Buy":
+        # Trigger when price >= stop: Min-heap
+        heappush(stop_buy_heaps[symbol], (stop_price, order_id, order))
+    else:
+        # Trigger when price <= stop: Max-heap
+        heappush(stop_sell_heaps[symbol], (-stop_price, order_id, order))
     
     order_dict = order.dict()
     order_dict["status"] = "inactive"
-    await manager.broadcast(json.dumps({"data_type": "new_order", "data": order_dict}))
+    await manager.send_to_user(order.user_id, json.dumps({"data_type": "new_order", "data": order_dict}))
 
 
 async def stop_limit(order):
     await add_limit_order(order)
 
 
-# =========================
-#   MATCHING FUNCTIONS
-# =========================
-
-async def limit(heap, security: str, last_price: float):
-    triggered_orders = []
-    
-    # We need to iterate carefully since we might remove items from middle (simplification: just peek top)
-    # But if heaps are mixed buy/sell, this is tricky. 
-    # Assuming the original code's logic of just checking top was sufficient for this sim.
-    
-    while heap:
-        limit_price, order_id, order = heap[0]
-
-        if order.symbol != security:
-            break
-
-        # BUY Limit: Execute if Market Price <= Limit Price
-        if order.order == "Buy" and last_price <= limit_price:
-            heappop(heap)
+async def match_limit(buy_heap, sell_heap, security: str, last_price: float):
+    # Match Buy Limits: Execute if Market Price <= Limit Price
+    while buy_heap:
+        neg_limit_price, order_id, order = buy_heap[0]
+        limit_price = -neg_limit_price
+        if last_price <= limit_price:
+            heappop(buy_heap)
+            if not await is_order_active(order_id): continue
             
-            # EXECUTE DB UPDATE
-            user_id = order.user_id or "johndoe" 
-            
-            execute_trade_db(
-                order_id=order_id,
-                symbol=security,
-                price=last_price, # Executed at market price? or Limit? Usually Limit or better.
-                quantity=order.order_quantity,
-                side="Buy",
-                user_id=user_id
-            )
-
-            # Broadcast
-            await manager.broadcast({
-                "data_type": "limit_triggered",
-                "side": "Buy",
-                "security": order.symbol,
-                "order_id": order_id,
-                "limit_price": float(limit_price),
-                "last_price": float(last_price),
-                "status": "completed", # Changed from 'active' for finality
-            })
-            triggered_orders.append(order)
-
-        elif order.order == "Sell" and last_price >= limit_price:
-            heappop(heap)
-            
-            user_id = order.user_id or "johndoe"
-            
-            execute_trade_db(
-                order_id=order_id,
-                symbol=security,
-                price=last_price,
-                quantity=order.order_quantity,
-                side="Sell",
-                user_id=user_id
-            )
-
-            await manager.broadcast({
-                "data_type": "limit_triggered",
-                "side": "Sell",
-                "security": order.symbol,
-                "order_id": order_id,
-                "limit_price": float(limit_price),
-                "last_price": float(last_price),
-                "status": "completed",
-            })
-            triggered_orders.append(order)
-
-        else:
-            break
-            
-    return triggered_orders
-
-
-async def stop_loss(heap, security: str, last_price: float):
-    triggered_orders = []
-
-    while heap:
-        stop_price, order_id, order = heap[0]
-
-        if order.symbol != security:
-            break
-
-        if order.order == "Buy" and last_price >= stop_price:
-            heappop(heap)
-            
-            user_id = order.user_id or "johndoe"
-            execute_trade_db(order_id, security, last_price, order.order_quantity, "Buy", user_id)
-
-            await manager.broadcast({
-                "data_type": "stop_loss_triggered",
-                "side": "Buy",
-                "security": order.symbol,
-                "order_id": order_id,
-                "stop_price": float(stop_price),
-                "last_price": float(last_price),
-                "status": "completed",
-            })
-            triggered_orders.append(order)
-
-        # SELL Stop: Execute if Market Price <= Stop Price
-        elif order.order == "Sell" and last_price <= stop_price:
-            heappop(heap)
-            
-            user_id = order.user_id or "johndoe"
-            execute_trade_db(order_id, security, last_price, order.order_quantity, "Sell", user_id)
-
-            await manager.broadcast({
-                "data_type": "stop_loss_triggered",
-                "side": "Sell",
-                "security": order.symbol,
-                "order_id": order_id,
-                "stop_price": float(stop_price),
-                "last_price": float(last_price),
-                "status": "completed",
-            })
-            triggered_orders.append(order)
-
+            execute_trade_db(order_id, security, limit_price, order.order_quantity, "Buy", order.user_id)
+            await manager.send_to_user(order.user_id, json.dumps({
+                "data_type": "limit_triggered", "side": "Buy", "security": security,
+                "order_id": order_id, "limit_price": float(limit_price), "last_price": float(last_price),
+                "status": "completed"
+            }))
         else:
             break
 
-    return triggered_orders
+    # Match Sell Limits: Execute if Market Price >= Limit Price
+    while sell_heap:
+        limit_price, order_id, order = sell_heap[0]
+        if last_price >= limit_price:
+            heappop(sell_heap)
+            if not await is_order_active(order_id): continue
+            
+            execute_trade_db(order_id, security, limit_price, order.order_quantity, "Sell", order.user_id)
+            await manager.send_to_user(order.user_id, json.dumps({
+                "data_type": "limit_triggered", "side": "Sell", "security": security,
+                "order_id": order_id, "limit_price": float(limit_price), "last_price": float(last_price),
+                "status": "completed"
+            }))
+        else:
+            break
 
+async def match_stop(buy_heap, sell_heap, security: str, last_price: float):
+    # Match Buy Stop (Stop-Loss or Stop-Buy): Execute if Market Price >= Stop Price
+    while buy_heap:
+        stop_price, order_id, order = buy_heap[0]
+        if last_price >= stop_price:
+            heappop(buy_heap)
+            if not await is_order_active(order_id): continue
+            
+            execute_trade_db(order_id, security, stop_price, order.order_quantity, "Buy", order.user_id)
+            await manager.send_to_user(order.user_id, json.dumps({
+                "data_type": "stop_loss_triggered", "side": "Buy", "security": security,
+                "order_id": order_id, "stop_price": float(stop_price), "last_price": float(last_price),
+                "status": "completed"
+            }))
+        else:
+            break
+
+    # Match Sell Stop (Stop-Loss): Execute if Market Price <= Stop Price
+    while sell_heap:
+        neg_stop_price, order_id, order = sell_heap[0]
+        stop_price = -neg_stop_price
+        if last_price <= stop_price:
+            heappop(sell_heap)
+            if not await is_order_active(order_id): continue
+            
+            execute_trade_db(order_id, security, stop_price, order.order_quantity, "Sell", order.user_id)
+            await manager.send_to_user(order.user_id, json.dumps({
+                "data_type": "stop_loss_triggered", "side": "Sell", "security": security,
+                "order_id": order_id, "stop_price": float(stop_price), "last_price": float(last_price),
+                "status": "completed"
+            }))
+        else:
+            break
+
+async def is_order_active(order_id):
+    """Secondary check to ensure order hasn't been cancelled recently"""
+    conn = get_db_connection()
+    status = conn.execute("SELECT status FROM orders WHERE order_id = ?", (order_id,)).fetchone()
+    conn.close()
+    return status and status['status'] == 'active'
 
 async def price_tick(security: str, last_price: float):
-    await limit(limit_heaps[security], security, last_price)
-    await stop_loss(stop_loss_heaps[security], security, last_price)
+    await match_limit(limit_buy_heaps[security], limit_sell_heaps[security], security, last_price)
+    await match_stop(stop_buy_heaps[security], stop_sell_heaps[security], security, last_price)
 

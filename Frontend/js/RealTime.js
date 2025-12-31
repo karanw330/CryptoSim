@@ -186,46 +186,40 @@ first_socket.onclose = function (event) {
 const user_trade_url = 'ws://127.0.0.1:8000/ws/user/trades?token=' + (localStorage.getItem('access_token') || "");
 const second_socket = new WebSocket(user_trade_url);
 const last = document.getElementById("last");
-second_socket.onmessage = function (event) {
-    let user_trade_data = JSON.parse(event.data);
-    console.log(user_trade_data);
-    if (user_trade_data["data_type"] === "static_trades") {
-        console.log(user_trade_data);
-        console.log("\n\nstatic data\n\n");
-        for (let index = 0; index < user_trade_data.data.length; index++) {
-            let order_id = user_trade_data.data[index].id;
-            let order_symbol = user_trade_data.data[index].symbol;
-            let order_buy_sell = user_trade_data.data[index].buy_sell;
-            let order_date = user_trade_data.data[index].date;
-            let order_time = user_trade_data.data[index].time;
-            let order_price = user_trade_data.data[index].price.toLocaleString('en-US');
-            let order_quantity = user_trade_data.data[index].quantity;
-            let order_entry_price = user_trade_data.data[index].entry_price.toLocaleString('en-US');
-            let calc_order_entry_price = Number(user_trade_data.data[index].entry_price);
-            let order_status = user_trade_data.data[index].status;
-            let order_type = user_trade_data.data[index].order_type;
-            if (order_status === "active") {
-                let order_card = `<!--<div class="card-outer-container">-->
+function createActiveOrderCard(order) {
+    const order_id = order.order_id || order.id || 1;
+    const order_symbol = order.symbol;
+    const order_buy_sell = order.order || order.buy_sell || "Buy";
+    const timestamp = order.timestamp || (order.date + " " + order.time);
+    const order_date = timestamp.split(' ')[0];
+    const order_time = timestamp.split(' ')[1] || "";
+    const order_price = (order.order_price || order.price || 0).toLocaleString('en-US');
+    const order_quantity = order.order_quantity || order.quantity || 0;
+    const entry_price = order.entry_price || order.price || 0;
+    const new_entry_price = entry_price.toLocaleString('en-US');
+    const calc_new_entry_price = Number(entry_price);
+
+    return `
     <div class="cards-container" id="ODID${order_id}">
         <div class="trade-order-card" style="height: 23vh;margin-bottom: 10px;">
             <div class="order-card-header">
                 <div class="trade-coin-info">
                     <div class="trade-coin-details">
-                        <h3> <img src="${profile[order_symbol].logo_src}" width="23%" height="23%" style="border-radius:50%;margin-top: 0;position:relative;top:5px;"> <span style="position:relative;top:-2px;">${profile[order_symbol].live_fname}</span></h3>
+                        <h3> <img src="${profile[order_symbol].logo_src}" width="23%" height="23%" style="border-radius:50%;margin-top: 0;position:relative;top:5px;">  ${profile[order_symbol].live_fname}</h3>
                         <p></p>
                     </div>
                     <div class="order-info-group">
                         <p class="order-value trade-order-type" data-type="${order_buy_sell.trim()}">${order_buy_sell}</p>
                     </div>
                 </div>
-                <div class="order-price-change" id="order-12345_order_change">${((profile[order_symbol].price - calc_order_entry_price) / order_entry_price) * 100}%</div>
+                <div class="order-price-change" id="order-${order_id}_order_change">${profile[order_symbol].price ? (((Number(profile[order_symbol].price) - calc_new_entry_price) / Number(calc_new_entry_price)) * 100).toFixed(2) : 0}%</div>
             </div>
 
             <div class="order-card-body">
                 <div class="order-body-row">
                     <div class="order-info-group">
                         <h4>Entry Price</h4>
-                        <p class="order-value">$${order_entry_price}</p>
+                        <p class="order-value">$${new_entry_price}</p>
                     </div>
                     <div class="order-info-group">
                         <h4>Time Created</h4>
@@ -244,148 +238,25 @@ second_socket.onmessage = function (event) {
                 </div>
             </div>
         </div>
-    </div>`
+    </div>`;
+}
 
-                last.insertAdjacentHTML("afterbegin", order_card);
-            }
-            else if (order_status === "inactive") {
-                console.log(order_status);
-                let stop_price = user_trade_data.data[index].stop_price.toLocaleString('en-US');
-                let limit_price = user_trade_data.data[index].limit.toLocaleString('en-US');
-                let inactive_order_card = `<div class="cards-container" id="ODID${order_id}">
-        <div class="trade-order-card">
-            <div class="order-card-header">
-                <div class="trade-coin-info">
-                    <div class="trade-coin-details">
-                        <h3><img src="${profile[order_symbol].logo_src}" width="17%" height="17%" style="border-radius:50%;margin-top: 0;position:relative;top:5px;"> <span id="ASSET${order_id}">${profile[order_symbol].live_fname}</span></h3>
-                    </div>
-                    <div class="order-info-group">
-                        <p class="order-value trade-order-type" data-type="${order_buy_sell.trim()}" id="BS${order_id}">${order_buy_sell}</p>
-                    </div>
-                    <p style="margin-left: 45%;" id="TYPE${order_id}">${order_type.toUpperCase()}</p>
-                </div>
-            </div>
+function createInactiveOrderCard(order) {
+    const order_id = order.order_id || order.id || 1;
+    const order_symbol = order.symbol;
+    const order_buy_sell = order.order || order.buy_sell || "Buy";
+    const timestamp = order.timestamp || (order.date + " " + order.time);
+    const order_date = timestamp.split(' ')[0];
+    const order_time = timestamp.split(' ')[1] || "";
+    const order_quantity = order.order_quantity || order.quantity || 0;
+    const entry_price = order.entry_price || order.price || 0;
+    const new_entry_price = entry_price.toLocaleString('en-US');
+    const order_price = (order.order_price || order.price || 0).toLocaleString('en-US');
+    const order_limit = order.limit_value !== undefined ? (order.limit_value === 0 ? "-" : order.limit_value) : (order.limit || "-");
+    const order_stop = order.stop_value !== undefined ? (order.stop_value === 0 ? "-" : order.stop_value) : (order.stop_price || "-");
+    const order_type = (order.order_type || "LIMIT").toUpperCase();
 
-            <div class="order-card-body">
-                <div class="order-body-row">
-                    <div class="order-info-group">
-                        <h4>Entry Price</h4>
-                        <p class="order-value">$<span id="ENTRY${order_id}">${order_entry_price}</span></p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Time Created</h4>
-                        <p class="order-value">${order_date} | ${order_time}</p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Quantity</h4>
-                        <p class="order-value" id="Q${order_id}">${order_quantity}</p>
-                    </div>
-                </div>
-                <div class="order-body-row">
-                    <div class="order-info-group">
-                        <h4>Total Value</h4>
-                        <p class="order-value order-amount-value">$<span id="TOT${order_id}">${order_price}</span></p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Limit</h4>
-                        <p class="order-value order-amount-value">$<span id="LIM${order_id}">${limit_price}</span></p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Stop</h4>
-                        <p class="order-value order-amount-value">$<span id="STOP${order_id}">${stop_price}</span></p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="order-card-actions" style="margin-bottom: 100px;">
-                <button class="order-action-btn order-close-btn" id="DEL${order_id}" onclick="delete_order(this.id)">Close trade</button>
-                <button class="order-action-btn order-modify-btn" id="${order_id}" onclick="showModifyModal(this.id)">Modify Order</button>
-            </div>
-        </div>
-    </div>`
-                inactive_span.insertAdjacentHTML("afterbegin", inactive_order_card);
-            }
-        }
-    }
-    else if (user_trade_data['data_type'] === 'updated_data') {
-        console.log(user_trade_data.data);
-    }
-    else if (user_trade_data['data_type'] === 'error') {
-        console.log(user_trade_data.data);
-    }
-    else if (user_trade_data['data_type'] === 'new_order') {
-        clearOrderFields();
-        console.log("received: ", user_trade_data.data);
-        // let order_id = user_trade_data.data.id;
-        let order_id = 1;
-        let new_entry_price = user_trade_data.data.entry_price.toLocaleString('en-US');
-        let calc_new_entry_price = Number(user_trade_data.data.entry_price);
-        let order_symbol = user_trade_data.data.symbol;
-        let order_buy_sell = user_trade_data.data.order;
-        let order_placed_quantity = user_trade_data.data.order_quantity;
-        let order_date = user_trade_data.data.date;
-        let order_time = user_trade_data.data.time;
-        let order_price = user_trade_data.data.order_price.toLocaleString('en-US');
-        let order_status = user_trade_data.data.status;
-        let order_limit = user_trade_data.data.limit_value;
-        let order_stop = user_trade_data.data.stop_value;
-        if (order_limit === 0) {
-            order_limit = "-";
-        }
-        if (order_stop === 0) {
-            order_stop = "-";
-        }
-        // let order_status = "active";
-        let order_type = user_trade_data.data.order_type.toUpperCase();
-        if (order_status === "active") {
-            console.log(user_trade_data);
-            console.log("\n\nnew_order\n\n")
-            let order_card = `
-    <div class="cards-container" id="ODID${order_id}">
-        <div class="trade-order-card" style="height: 23vh;margin-bottom: 10px;">
-            <div class="order-card-header">
-                <div class="trade-coin-info">
-                    <div class="trade-coin-details">
-                        <h3> <img src="${profile[order_symbol].logo_src}" width="23%" height="23%" style="border-radius:50%;margin-top: 0;position:relative;top:5px;">  ${profile[order_symbol].live_fname}</h3>
-                        <p></p>
-                    </div>
-                    <div class="order-info-group">
-                        <p class="order-value trade-order-type" data-type="${order_buy_sell.trim()}">${order_buy_sell}</p>
-                    </div>
-                </div>
-                <div class="order-price-change" id="order-12345_order_change">${((Number(profile[order_symbol].price) - calc_new_entry_price) / Number(calc_new_entry_price)) * 100}%</div>
-            </div>
-
-            <div class="order-card-body">
-                <div class="order-body-row">
-                    <div class="order-info-group">
-                        <h4>Entry Price</h4>
-                        <p class="order-value">$${new_entry_price}</p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Time Created</h4>
-                        <p class="order-value">${order_date} | ${order_time}</p>
-                    </div>
-                </div>
-                <div class="order-body-row">
-                    <div class="order-info-group">
-                        <h4>Quantity</h4>
-                        <p class="order-value order-amount-value">${order_placed_quantity}</p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Total Value</h4>
-                        <p class="order-value order-amount-value">$${order_price}</p>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>`
-            last.insertAdjacentHTML("afterbegin", order_card);
-        }
-        else if (order_status === "inactive") {
-            console.log("printing\n")
-            let inactive_order_card = `<div class="cards-container" id="ODID${order_id}">
+    return `<div class="cards-container" id="ODID${order_id}">
         <div class="trade-order-card">
             <div class="order-card-header">
                 <div class="trade-coin-info">
@@ -411,7 +282,7 @@ second_socket.onmessage = function (event) {
                     </div>
                     <div class="order-info-group">
                         <h4>Quantity</h4>
-                        <p class="order-value" id="Q${order_id}">${order_placed_quantity}</p>
+                        <p class="order-value" id="Q${order_id}">${order_quantity}</p>
                     </div>
                 </div>
                 <div class="order-body-row">
@@ -435,11 +306,75 @@ second_socket.onmessage = function (event) {
                 <button class="order-action-btn order-modify-btn" id="${order_id}" onclick="showModifyModal(this.id)">Modify Order</button>
             </div>
         </div>
-    </div>`
-            inactive_span.insertAdjacentHTML("afterbegin", inactive_order_card);
+    </div>`;
+}
+
+second_socket.onmessage = function (event) {
+    let user_trade_data = JSON.parse(event.data);
+    console.log("WS Message:", user_trade_data);
+
+    if (user_trade_data["data_type"] === "static_trades") {
+        for (let index = 0; index < user_trade_data.data.length; index++) {
+            const order = user_trade_data.data[index];
+            if (order.status === "active") {
+                last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
+            } else if (order.status === "inactive") {
+                inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+            }
         }
     }
+    else if (user_trade_data['data_type'] === 'new_order') {
+        clearOrderFields();
+        const order = user_trade_data.data;
+        if (order.status === "active") {
+            last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
+        } else if (order.status === "inactive") {
+            inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+        }
+    }
+    else if (user_trade_data['data_type'] === 'limit_triggered' || user_trade_data['data_type'] === 'stop_loss_triggered') {
+        // Remove from pending, optionally add to completed if we had a list for that
+        const order_id = user_trade_data.order_id;
+        const element = document.getElementById(`ODID${order_id}`);
+        if (element) element.remove();
+        syncDashboard(); // Refresh balances
+    }
 };
+
+async function syncDashboard() {
+    try {
+        // 1. Fetch User Profile (Balance)
+        const userRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/');
+        if (userRes && userRes.ok) {
+            const userData = await userRes.json();
+            document.getElementById('cash_available').textContent = `$${userData.balance_usd.toLocaleString('en-US')}`;
+            document.getElementById('buying_power').textContent = `$${userData.balance_usd.toLocaleString('en-US')}`;
+        }
+
+        // 2. Fetch Orders
+        const orderRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/orders');
+        if (orderRes && orderRes.ok) {
+            const orders = await orderRes.json();
+            last.innerHTML = '';
+            inactive_span.innerHTML = '';
+            orders.forEach(order => {
+                if (order.status === 'active') {
+                    last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
+                } else {
+                    inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+                }
+            });
+        }
+
+        // 3. Fetch Portfolio (Holdings)
+        // Note: Portfolio rendering logic might need its own container if 'last' is only for orders.
+        // Assuming 'last' is for ACTIVE orders in this dashboard design.
+    } catch (e) {
+        console.error("Sync error:", e);
+    }
+}
+
+window.addEventListener('load', syncDashboard);
 
 const symbolMap = {
     "BTC - Bitcoin": { chart: "BINANCE:BTCUSD", symbol: "BINANCE:BTCUSDT", var: "btc" },

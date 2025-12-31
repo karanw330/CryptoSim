@@ -65,9 +65,9 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
 
         # 2. Insert into DB
         cursor.execute('''
-            INSERT INTO orders (user_id, symbol, order_type, quantity, price, limit_value, stop_value, status, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-        ''', (user_id, data.symbol, data.order_type, data.order_quantity, data.order_price, 
+            INSERT INTO orders (user_id, symbol, order_type, side, quantity, price, limit_value, stop_value, status, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ''', (user_id, data.symbol, data.order_type, data.order, data.order_quantity, data.order_price, 
               data.limit_value or 0, data.stop_value or 0, "active"))
         
         order_id = cursor.lastrowid
@@ -94,16 +94,90 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
 
 @router.delete("/delorder")
 async def delorder(data: Del, current_user: User = Depends(get_current_user)):
+    from app.db_init import get_db_connection
     try:
-        # Check ownership logic could go here if orders had user_id
-        print(f"User {current_user.username} deleting order {data.order_id}")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. Verify ownership and get details for refund
+        order = cursor.execute('SELECT * FROM orders WHERE order_id = ? AND user_id = ?', 
+                             (data.order_id, current_user.username)).fetchone()
+        if not order:
+            return {"status": "error", "reason": "Order not found or unauthorized"}
+        
+        if order['status'] != 'active':
+            return {"status": "error", "reason": f"Cannot delete order in '{order['status']}' state"}
+
+        # 2. Update status
+        cursor.execute("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", (data.order_id,))
+        
+        # 3. Refund/Unlock
+        if order['order_type'] in ['market', 'limit', 'stop-limit']:
+            if order['side'] == 'Buy':
+                # Refund USD: quantity * price (or limit_value?)
+                # In rest.py, Buy lock was: quantity * order_price
+                refund_amt = order['quantity'] * order['price']
+                cursor.execute("UPDATE users SET balance_usd = balance_usd + ? WHERE username = ?", 
+                             (refund_amt, current_user.username))
+            else:
+                # Refund Asset
+                cursor.execute("UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?", 
+                             (order['quantity'], current_user.username, order['symbol']))
+
+        conn.commit()
+        conn.close()
+        print(f"User {current_user.username} cancelled order {data.order_id}")
         return {"status": "ok", "order_id": data.order_id}
     except Exception as e:
         print("Error:", e)
-        return {"status":"error"}
+        return {"status":"error", "detail": str(e)}
 
 @router.patch("/updateorder")
 async def updateorder(data: OrderUpdate, current_user: User = Depends(get_current_user)):
-    print(f"User {current_user.username} updating order: {data}")
-    return {"status": "ok"}
+    # To keep the matching engine simple, an "update" is a "cancel + new order"
+    # This ensures it gets re-inserted into heaps with correct priority
+    from app.db_init import get_db_connection
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. Get old order
+        old = cursor.execute('SELECT * FROM orders WHERE order_id = ? AND user_id = ?', 
+                           (data.order_id, current_user.username)).fetchone()
+        if not old or old['status'] != 'active':
+            return {"status": "error", "reason": "Order not found or inactive"}
+
+        # 2. Cancel old (with refund logic same as delorder)
+        # We can just call a helper or replicate it here for simplicity
+        cursor.execute("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", (data.order_id,))
+        if old['side'] == 'Buy':
+            cursor.execute("UPDATE users SET balance_usd = balance_usd + ? WHERE username = ?", 
+                         (old['quantity'] * old['price'], current_user.username))
+        else:
+            cursor.execute("UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?", 
+                         (old['quantity'], current_user.username, old['symbol']))
+        
+        conn.commit()
+        conn.close()
+
+        # 3. Create new order with updated values
+        # We use the existing 'order' endpoint logic by creating a new OrderData object
+        new_data = OrderData(
+            symbol=old['symbol'],
+            order=old['side'],
+            order_type=old['order_type'],
+            order_quantity=data.quantity,
+            order_price=data.limit_price if old['order_type'] == 'limit' else old['price'],
+            limit_value=data.limit_price if old['order_type'] == 'limit' else old['limit_value'],
+            stop_value=old['stop_value'],
+            date="", time="", # Not used by endpoint
+            user_id=current_user.username
+        )
+        
+        # We call the 'order' endpoint function directly
+        return await order(new_data, current_user)
+
+    except Exception as e:
+        print("Update Error:", e)
+        return {"status": "error", "detail": str(e)}
 

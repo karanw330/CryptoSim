@@ -63,7 +63,7 @@ async def order_ws(ws: WebSocket):
         return
 
     # At this point the user is authenticated; connect and proceed
-    await manager.connect(ws)
+    await manager.connect(ws, current_user.username)
     try:
         while True:
             await manager.receive(ws)  # Keep alive

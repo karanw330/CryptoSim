@@ -26,6 +26,7 @@ class User(BaseModel):
     email: str | None = None
     sub: str | None = None
     disabled: bool | None = None
+    balance_usd: float | None = None
 
 
 class UserInDB(User):
