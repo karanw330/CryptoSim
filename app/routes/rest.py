@@ -1,7 +1,9 @@
 import json
 from app.manager import manager
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.routes.PydanticModels import *
+from app.login_back.LoginFunctions import get_current_user
+from app.login_back.LoginPydanticModels import User
 from app.order_book import *
 
 router = APIRouter()
@@ -13,15 +15,14 @@ funcDict = {
     "stop-limit": stop_limit,
 }
 @router.post("/order")
-async def order(data: OrderData):
+async def order(data: OrderData, current_user: User = Depends(get_current_user)):
     from app.db_init import get_db_connection
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # 1. Validate Balance / Portfolio
-        user_id = "johndoe" # Hardcoded for now as we don't have auth token in this payload
-                            # In a real app, 'data' should come with auth or from Depends()
+        user_id = current_user.username
         
         # We need to fetch the user... but the endpoint is open. 
         # Assuming single user 'johndoe' for this sim as per previous context
@@ -94,16 +95,17 @@ async def order(data: OrderData):
         return {"status":"error", "detail": str(e)}
 
 @router.delete("/delorder")
-async def order(data: Del):
+async def delorder(data: Del, current_user: User = Depends(get_current_user)):
     try:
-        print(data.order_id)
+        # Check ownership logic could go here if orders had user_id
+        print(f"User {current_user.username} deleting order {data.order_id}")
         return {"status": "ok", "order_id": data.order_id}
     except Exception as e:
         print("Error:", e)
         return {"status":"error"}
 
 @router.patch("/updateorder")
-async def updateorder(data: OrderUpdate):
-    print(data)
+async def updateorder(data: OrderUpdate, current_user: User = Depends(get_current_user)):
+    print(f"User {current_user.username} updating order: {data}")
     return {"status": "ok"}
 

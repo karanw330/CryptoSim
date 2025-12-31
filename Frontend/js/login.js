@@ -2,6 +2,7 @@ let currentForm = 'login';
 let otpUserEmail = '';
 let resendTimer = null;
 let resendCountdown = 30;
+let isForgotPassword = false;
 
 // Backend simulation functions
 
@@ -33,7 +34,7 @@ async function verifyOTP(email, otp) {
         });
         const data = await res.json();
         if (res.ok && data.access_token) {
-            return { success: true, message: 'OTP verified', token: data.access_token };
+            return { success: true, message: 'OTP verified', data: data };
         } else {
             return { success: false, message: data.detail || 'Invalid OTP' };
         }
@@ -45,48 +46,48 @@ async function verifyOTP(email, otp) {
 
 async function registerUser(name, email, password) {
     const signupBtn = document.getElementById("createAccBtn");
-        const res = await fetch('http://localhost:8000/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                username: name,
-                email: email,
-                password: password
-            })
-        });
+    const res = await fetch('http://localhost:8000/register', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            username: name,
+            email: email,
+            password: password
+        })
+    });
 
-        const data = await res.json();
-        if (!res.ok) {
-                signupBtn.textContent = 'Create Account';
-            signupBtn.disabled = false;//// res is ok when status code is 2XX
-                if(data.detail.type === 'user'){
-                    showError('signupEmail', data.detail.content);
-                    throw new Error('user');
-                } else if(data.detail.type === "password"){
-                    showError('signupPassword', data.detail.content);
-                    throw new Error('password');
-                } else {
-                    showError('signupEmail' , data.detail || 'Registration failed');
-                    throw new Error('unknown');
-                }
+    const data = await res.json();
+    if (!res.ok) {
+        signupBtn.textContent = 'Create Account';
+        signupBtn.disabled = false;//// res is ok when status code is 2XX
+        if (data.detail.type === 'user') {
+            showError('signupEmail', data.detail.content);
+            throw new Error('user');
+        } else if (data.detail.type === "password") {
+            showError('signupPassword', data.detail.content);
+            throw new Error('password');
+        } else {
+            showError('signupEmail', data.detail || 'Registration failed');
+            throw new Error('unknown');
+        }
 
-            }
+    }
 
-            // ---- SUCCESS ----
-            if ("access_token" in data) {
-                showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
-                await hideSignUpErrors();
-                setTimeout(() => saveTokenAndRedirect(data.access_token), 2000);
-                return;
-            }
+    // ---- SUCCESS ----
+    if ("access_token" in data) {
+        showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
+        await hideSignUpErrors();
+        setTimeout(() => saveTokenAndRedirect(data.access_token), 2000);
+        return;
+    }
 
-            showError('signupEmail', 'Unexpected response');
-            if (signupBtn) {
-                signupBtn.textContent = 'Create Account';
-                signupBtn.disabled = false;
-            }
+    showError('signupEmail', 'Unexpected response');
+    if (signupBtn) {
+        signupBtn.textContent = 'Create Account';
+        signupBtn.disabled = false;
+    }
 }
 
 async function loginUser(email, password) {
@@ -106,30 +107,30 @@ async function loginUser(email, password) {
     if (!res.ok) {
         console.log(data.detail);                        // res is ok when status code is 2XX
         loginBtn.textContent = 'Sign In';
-                loginBtn.disabled = false;
-        if(data.detail.type === "user"){
+        loginBtn.disabled = false;
+        if (data.detail.type === "user") {
             showError("email", data.detail.content || 'User not found');
             throw new Error('user');
-        } else if(data.detail.type === "password"){
+        } else if (data.detail.type === "password") {
             showError("password", data.detail.content || 'Incorrect password');
             throw new Error('password');
         } else {
-            showError('email' , data.detail || 'Login failed');
+            showError('email', data.detail || 'Login failed');
             throw new Error('unknown');
         }
     }
 
-    if (result.access_token) {
-                showSuccess('successMessage', 'Login successful! Redirecting...');
-                await hideLoginErrors();
-                setTimeout(() => redirectToHomePage(), 2000);
-            } else {
-                showError('password', 'Invalid email or password');
-                loginBtn.textContent = 'Sign In';
-                loginBtn.disabled = false;
-            }
-                loginBtn.textContent = 'Sign In';
-                loginBtn.disabled = false;
+    if (data.access_token) {
+        showSuccess('successMessage', 'Login successful! Redirecting...');
+        await hideLoginErrors();
+        setTimeout(() => saveTokensAndRedirect(data), 2000);
+    } else {
+        showError('password', 'Invalid email or password');
+        loginBtn.textContent = 'Sign In';
+        loginBtn.disabled = false;
+    }
+    loginBtn.textContent = 'Sign In';
+    loginBtn.disabled = false;
 
     return data;
 
@@ -137,7 +138,7 @@ async function loginUser(email, password) {
 
 // Form switching
 function showForm(formName) {
-    const forms = ['loginForm', 'signupForm', 'otpEmailForm', 'otpVerifyForm'];
+    const forms = ['loginForm', 'signupForm', 'otpEmailForm', 'otpVerifyForm', 'resetPasswordForm'];
 
     forms.forEach(form => {
         const formElement = document.getElementById(form);
@@ -299,6 +300,21 @@ document.getElementById('backToLoginFromOTPBtn').addEventListener('click', (e) =
 document.getElementById('backFromOTPVerifyBtn').addEventListener('click', () => {
     showForm('otpEmailForm');
     if (resendTimer) clearInterval(resendTimer);
+});
+
+document.querySelector('.forgot-password').addEventListener('click', (e) => {
+    e.preventDefault();
+    isForgotPassword = true;
+    showForm('otpEmailForm');
+});
+
+document.getElementById('otpLoginBtn').addEventListener('click', () => {
+    isForgotPassword = false;
+    showForm('otpEmailForm');
+});
+
+document.getElementById('backToLoginFromResetBtn').addEventListener('click', () => {
+    showForm('loginForm');
 });
 
 // Login form submission
@@ -476,7 +492,11 @@ document.getElementById('otpVerifyFormElement').addEventListener('submit', async
             hideError('otpVerify');
             submitBtn.textContent = 'Success!';
 
-            setTimeout(() => redirectToHomePage(), 1000);
+            if (isForgotPassword) {
+                setTimeout(() => showForm('resetPasswordForm'), 1000);
+            } else {
+                setTimeout(() => saveTokensAndRedirect(result.data), 1000);
+            }
         } else {
             showError('otpVerify', 'Invalid OTP. Please try again.');
             otpInputs.forEach(input => input.value = '');
@@ -533,6 +553,48 @@ document.getElementById('resendOTPBtn').addEventListener('click', async function
     } catch (error) {
         this.textContent = 'Resend OTP';
         this.disabled = false;
+    }
+});
+
+// Reset Password form submission
+document.getElementById('resetPasswordFormElement').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const password = document.getElementById('resetPassword').value;
+    const confirmPassword = document.getElementById('resetConfirmPassword').value;
+
+    if (password !== confirmPassword) {
+        showError('resetConfirmPassword', 'Passwords do not match');
+        return;
+    }
+
+    const submitBtn = this.querySelector('.login-btn');
+    submitBtn.textContent = 'Updating...';
+    submitBtn.disabled = true;
+
+    try {
+        const res = await fetch('http://localhost:8000/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: otpUserEmail,
+                new_password: password
+            })
+        });
+
+        if (res.ok) {
+            showSuccess('resetSuccessMessage', 'Password updated! Please login with your new password.');
+            setTimeout(() => showForm('loginForm'), 3000);
+        } else {
+            const data = await res.json();
+            showError('resetPassword', data.detail || 'Failed to reset password');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Update Password';
+        }
+    } catch (error) {
+        showError('resetPassword', 'An error occurred');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Update Password';
     }
 });
 
@@ -593,114 +655,122 @@ function decodeJWT(token) {
     return JSON.parse(jsonPayload);
 }
 
-// Helper to store token and redirect
+// Helper to store tokens and redirect
+function saveTokensAndRedirect(data) {
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    redirectToHomePage();
+}
+
 function saveTokenAndRedirect(token) {
-    localStorage.setItem('token', token);
+    // This is used for compatibility if only access token is provided (like registration)
+    // but ideally registration should now return refresh_token too (which it does)
+    localStorage.setItem('access_token', token);
     redirectToHomePage();
 }
 
 async function handleCredentialResponse(response) {
     const responsePayload = decodeJWT(response.credential);
-        // ---------------- LOGIN ----------------
-        if (currentForm === 'loginForm' || currentForm === 'login') {
-            const loginBtn = document.querySelector('#loginForm .login-btn');
-            if (loginBtn) {
-                loginBtn.textContent = 'Signing In...';
-                loginBtn.disabled = true;
-            }
+    // ---------------- LOGIN ----------------
+    if (currentForm === 'loginForm' || currentForm === 'login') {
+        const loginBtn = document.querySelector('#loginForm .login-btn');
+        if (loginBtn) {
+            loginBtn.textContent = 'Signing In...';
+            loginBtn.disabled = true;
+        }
 
-            const res = await fetch('http://localhost:8000/token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    email: responsePayload.email,
-                    sub: String(responsePayload.sub)
-                })
+        const res = await fetch('http://localhost:8000/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: responsePayload.email,
+                sub: String(responsePayload.sub)
             })
-            const data = await res.json();
+        })
+        const data = await res.json();
 
-            if (!res.ok) {                   // res is ok when status code is 2XX
-                if(data.detail.type === "user"){
-                    showError('email', data.detail.content || 'User not found');
-                    throw new Error('user');
-                } else if(data.detail.type === "password"){
-                    showError('password', data.detail.content || 'Incorrect password');
-                    throw new Error('password');
-                } else {
-                    showError('email' , data.detail || 'Login failed');
-                    throw new Error('unknown');
-                }
-            }
-
-            // ---- SUCCESS ----
-            if ("access_token" in data) {
-                showSuccess('successMessage', 'Login successful! Redirecting...');
-                await hideLoginErrors();
-                setTimeout(() => saveTokenAndRedirect(data.access_token), 2000);
-                return;
-            }
-
-            showError('email', 'Unexpected response');
-            if (loginBtn) {
-                loginBtn.textContent = 'Sign In';
-                loginBtn.disabled = false;
+        if (!res.ok) {                   // res is ok when status code is 2XX
+            if (data.detail.type === "user") {
+                showError('email', data.detail.content || 'User not found');
+                throw new Error('user');
+            } else if (data.detail.type === "password") {
+                showError('password', data.detail.content || 'Incorrect password');
+                throw new Error('password');
+            } else {
+                showError('email', data.detail || 'Login failed');
+                throw new Error('unknown');
             }
         }
 
-        // ---------------- SIGNUP ----------------
-        else if (currentForm === 'signupForm') {
-            const signupBtn = document.querySelector('#signupForm .login-btn');
-            if (signupBtn) {
-                signupBtn.textContent = 'Creating Account...';
-                signupBtn.disabled = true;
-            }
+        // ---- SUCCESS ----
+        if ("access_token" in data) {
+            showSuccess('successMessage', 'Login successful! Redirecting...');
+            await hideLoginErrors();
+            setTimeout(() => saveTokensAndRedirect(data), 2000);
+            return;
+        }
 
-            const res = await fetch('http://localhost:8000/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: responsePayload.name,
-                    email: responsePayload.email,
-                    sub: String(responsePayload.sub),
-                })
-            });
+        showError('email', 'Unexpected response');
+        if (loginBtn) {
+            loginBtn.textContent = 'Sign In';
+            loginBtn.disabled = false;
+        }
+    }
 
-            const data = await res.json();
+    // ---------------- SIGNUP ----------------
+    else if (currentForm === 'signupForm') {
+        const signupBtn = document.querySelector('#signupForm .login-btn');
+        if (signupBtn) {
+            signupBtn.textContent = 'Creating Account...';
+            signupBtn.disabled = true;
+        }
 
-            // ---- ERROR ----
-            if (!res.ok) {
-                console.log(data.detail)
-                signupBtn.textContent = 'Create Account';
+        const res = await fetch('http://localhost:8000/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: responsePayload.name,
+                email: responsePayload.email,
+                sub: String(responsePayload.sub),
+            })
+        });
+
+        const data = await res.json();
+
+        // ---- ERROR ----
+        if (!res.ok) {
+            console.log(data.detail)
+            signupBtn.textContent = 'Create Account';
             signupBtn.disabled = false;//// res is ok when status code is 2XX
-                if(data.detail.type === 'user'){
-                    showError('signupEmail', data.detail.content);
-                    throw new Error('user');
-                } else if(data.detail.type === "password"){
-                    showError('signupPassword', data.detail.content);
-                    throw new Error('password');
-                } else {
-                    showError('signupEmail' , data.detail || 'Registration failed');
-                    throw new Error('unknown');
-                }
-
+            if (data.detail.type === 'user') {
+                showError('signupEmail', data.detail.content);
+                throw new Error('user');
+            } else if (data.detail.type === "password") {
+                showError('signupPassword', data.detail.content);
+                throw new Error('password');
+            } else {
+                showError('signupEmail', data.detail || 'Registration failed');
+                throw new Error('unknown');
             }
 
-            // ---- SUCCESS ----
-            if ("access_token" in data) {
-                showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
-                await hideSignUpErrors();
-                setTimeout(() => saveTokenAndRedirect(data.access_token), 2000);
-                return;
-            }
-
-            showError('signupEmail', 'Unexpected response');
-            if (signupBtn) {
-                signupBtn.textContent = 'Create Account';
-                signupBtn.disabled = false;
-            }
         }
+
+        // ---- SUCCESS ----
+        if ("access_token" in data) {
+            showSuccess('signupSuccessMessage', 'Account created! Redirecting...');
+            await hideSignUpErrors();
+            setTimeout(() => saveTokensAndRedirect(data), 2000);
+            return;
+        }
+
+        showError('signupEmail', 'Unexpected response');
+        if (signupBtn) {
+            signupBtn.textContent = 'Create Account';
+            signupBtn.disabled = false;
+        }
+    }
 }
 
 

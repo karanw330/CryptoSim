@@ -26,7 +26,12 @@ async def login_for_access_token(data : LoginRequest):
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token":access_token, "token_type":"bearer"}
+    refresh_token = create_refresh_token(user.username)
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "refresh_token": refresh_token
+    }
 
 
 @Router.post("/register", response_model=Token)
@@ -42,7 +47,12 @@ async def register_user(user_data: UserCreate):
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = create_refresh_token(user.username)
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "refresh_token": refresh_token
+    }
 
 
 @Router.post("/send-otp")
@@ -72,7 +82,44 @@ async def verify_otp_route(data: OTPVerify):
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = create_refresh_token(user.username)
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "refresh_token": refresh_token
+    }
+
+@Router.post("/refresh", response_model=Token)
+async def refresh_token_route(data: RefreshTokenRequest):
+    username = verify_refresh_token(data.refresh_token)
+    if not username:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token"
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": username}, expires_delta=access_token_expires
+    )
+    # We can either return the same refresh token or a new one. 
+    # For simplicity, returning the same one.
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "refresh_token": data.refresh_token
+    }
+
+@Router.post("/reset-password")
+async def reset_password_route(data: PasswordResetRequest):
+    # This assumes OTP was already verified and email is valid
+    success = reset_password(data.email, data.new_password)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to reset password"
+        )
+    return {"message": "Password reset successfully"}
 
 
 @Router.get("/users/me/", response_model=User)

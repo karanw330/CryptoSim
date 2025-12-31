@@ -14,6 +14,7 @@ class UserCreate(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    refresh_token: str
 
 
 class TokenData(BaseModel):
@@ -37,3 +38,10 @@ class OTPRequest(BaseModel):
 class OTPVerify(BaseModel):
     email: str
     otp: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class PasswordResetRequest(BaseModel):
+    email: str
+    new_password: str

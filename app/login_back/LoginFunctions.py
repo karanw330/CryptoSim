@@ -2,6 +2,7 @@ from app.db_init import get_db_connection
 import os
 import jwt
 import random
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
@@ -151,3 +152,41 @@ def verify_otp_logic(email: str, otp: str):
             return user
         
     return False
+
+def create_refresh_token(user_id: str):
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    
+    conn = get_db_connection()
+    conn.execute(
+        'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+        (user_id, token, expires_at.isoformat())
+    )
+    conn.commit()
+    conn.close()
+    return token
+
+def verify_refresh_token(token: str):
+    conn = get_db_connection()
+    row = conn.execute(
+        'SELECT user_id, expires_at FROM refresh_tokens WHERE token = ?',
+        (token,)
+    ).fetchone()
+    conn.close()
+    
+    if row:
+        expires_at = datetime.fromisoformat(row['expires_at'])
+        if datetime.now(timezone.utc) < expires_at:
+            return row['user_id']
+    return None
+
+def reset_password(email: str, new_password: str):
+    hashed_pwd = get_password_hash(new_password)
+    conn = get_db_connection()
+    conn.execute(
+        'UPDATE users SET hashed_password = ? WHERE email = ?',
+        (hashed_pwd, email)
+    )
+    conn.commit()
+    conn.close()
+    return True
