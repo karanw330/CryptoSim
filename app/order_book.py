@@ -68,6 +68,7 @@ stop_sell_heaps: Dict[str, List[Tuple[float, int, Any]]] = defaultdict(list)
 #   ADD ORDER HELPERS
 # =========================
 
+async def market(details):
     details_dict = details.dict()
     details_dict["status"] = "active"
     # New orders are broadcasted so everyone sees their own update? 
