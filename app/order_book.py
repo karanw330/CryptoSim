@@ -87,7 +87,7 @@ def recover_active_orders():
     count = 0
     for row in rows:
         order = OrderData(
-            order=row['side'],
+            order=row['side'] or "Buy",
             order_id=row['order_id'],
             entry_price=row['price'], 
             order_type=row['order_type'],

@@ -43,6 +43,7 @@ def init_db():
             user_id TEXT,
             symbol TEXT,
             order_type TEXT,
+            side TEXT,
             quantity REAL,
             price REAL,
             limit_value REAL,
