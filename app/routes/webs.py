@@ -68,7 +68,7 @@ async def order_ws(ws: WebSocket):
         while True:
             await manager.receive(ws)  # Keep alive
     except Exception:
-        await manager.disconnect(ws)
+        await manager.disconnect(ws, current_user.username)
         print("disconnected")
 
 
