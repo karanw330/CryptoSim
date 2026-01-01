@@ -177,6 +177,19 @@ first_socket.onmessage = function (event) {
             change.style.background = 'rgba(255, 71, 87, 0.1)';
         }
     }
+
+    // Debounce or conditional refresh for dashboard stats to avoid over-rendering
+    // For now, let's just update the holdings list if it's visible or just call sync
+    if (document.getElementById('dashboard_holdings_list')) {
+        // We could optimize this by only updating the specific coin row, 
+        // but for a few coins, syncDashboard is fine and simpler.
+        // To avoid 100s of calls per second (since 6 coins tick independently), 
+        // we can throttle it.
+        if (!window._last_sync || Date.now() - window._last_sync > 2000) {
+            syncDashboard();
+            window._last_sync = Date.now();
+        }
+    }
 };
 
 first_socket.onclose = function (event) {
@@ -345,30 +358,114 @@ async function syncDashboard() {
     try {
         // 1. Fetch User Profile (Balance)
         const userRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/');
+        let userBalance = 0;
         if (userRes && userRes.ok) {
             const userData = await userRes.json();
-            document.getElementById('cash_available').textContent = `$${userData.balance_usd.toLocaleString('en-US')}`;
-            document.getElementById('buying_power').textContent = `$${userData.balance_usd.toLocaleString('en-US')}`;
+            userBalance = userData.balance_usd;
+
+            // Update Home dashboard elements
+            if (document.getElementById('cash_available')) {
+                document.getElementById('cash_available').textContent = `$${userBalance.toLocaleString('en-US')}`;
+            }
+            if (document.getElementById('buying_power')) {
+                document.getElementById('buying_power').textContent = `$${userBalance.toLocaleString('en-US')}`;
+            }
+
+            if (document.getElementById('dashboard_buying_power')) {
+                document.getElementById('dashboard_buying_power').textContent = `Buying Power: $${userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            // Update user initials
+            if (document.getElementById('stockUserMenu') && userData.full_name) {
+                const names = userData.full_name.split(' ');
+                const initials = names.map(n => n[0]).join('').toUpperCase();
+                document.getElementById('stockUserMenu').textContent = initials;
+            }
         }
 
         // 2. Fetch Orders
         const orderRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/orders');
         if (orderRes && orderRes.ok) {
             const orders = await orderRes.json();
-            last.innerHTML = '';
-            inactive_span.innerHTML = '';
+            if (last) last.innerHTML = '';
+            if (inactive_span) inactive_span.innerHTML = '';
             orders.forEach(order => {
                 if (order.status === 'active') {
-                    last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
+                    if (last) last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
                 } else {
-                    inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+                    if (inactive_span) inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
                 }
             });
         }
 
         // 3. Fetch Portfolio (Holdings)
-        // Note: Portfolio rendering logic might need its own container if 'last' is only for orders.
-        // Assuming 'last' is for ACTIVE orders in this dashboard design.
+        const portfolioRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/items/');
+        if (portfolioRes && portfolioRes.ok) {
+            const holdings = await portfolioRes.json();
+            const holdingsList = document.getElementById('dashboard_holdings_list');
+            if (holdingsList) {
+                holdingsList.innerHTML = '';
+                let totalHoldingsValue = 0;
+
+                holdings.forEach(item => {
+                    const symbol = item.item_id;
+                    const amount = item.amount;
+                    const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol.toLowerCase());
+                    const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
+                    const val = amount * currentPrice;
+                    totalHoldingsValue += val;
+
+                    const coinName = priceInfo ? priceInfo.live_fname : symbol;
+                    const logo = priceInfo ? priceInfo.logo_src : "";
+
+                    holdingsList.insertAdjacentHTML('beforeend', `
+                        <div class="stock-item">
+                            <div class="stock-info">
+                                <div class="stock-icon" style="background: rgba(255,255,255,0.1);"><img src="${logo}" width="100%" height="100%" style="border-radius:50%"></div>
+                                <div class="stock-details">
+                                    <h4>${coinName}</h4>
+                                    <p>${symbol} • ${amount.toFixed(4)} units</p>
+                                </div>
+                            </div>
+                            <div class="stock-price">
+                                <div class="price">$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                <div class="change" style="color: #888;">@ $${currentPrice.toLocaleString()}</div>
+                            </div>
+                        </div>
+                    `);
+                });
+
+                // Update Total Stats
+                const totalValue = userBalance + totalHoldingsValue;
+                const initialBalance = 100000;
+                const totalProfit = totalValue - initialBalance;
+                const profitPerc = (totalProfit / initialBalance) * 100;
+
+                if (document.getElementById('dashboard_total_value')) {
+                    document.getElementById('dashboard_total_value').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+                if (document.getElementById('dashboard_total_perc_change')) {
+                    document.getElementById('dashboard_total_perc_change').textContent = `${profitPerc >= 0 ? '+' : ''}${profitPerc.toFixed(2)}%`;
+                    document.getElementById('dashboard_total_perc_change').className = profitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
+                }
+                if (document.getElementById('dashboard_total_profit')) {
+                    document.getElementById('dashboard_total_profit').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    document.getElementById('dashboard_total_profit').className = totalProfit >= 0 ? 'stats-value positive' : 'stats-value negative';
+                }
+
+                // --- Home Page Specific Metrics ---
+                if (document.getElementById('portfolio_value')) {
+                    document.getElementById('portfolio_value').textContent = `$${totalHoldingsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+                if (document.getElementById('total_equity')) {
+                    document.getElementById('total_equity').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+                if (document.getElementById('day_pnl')) {
+                    document.getElementById('day_pnl').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    document.getElementById('day_pnl').style.color = totalProfit >= 0 ? '#00ff88' : '#ff4757';
+                }
+            }
+        }
     } catch (e) {
         console.error("Sync error:", e);
     }
