@@ -64,11 +64,16 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
 
 
         # 2. Insert into DB
+        stat=""
+        if data.order_type == "market":
+            stat="completed"
+        else:
+            stat="active"
         cursor.execute('''
             INSERT INTO orders (user_id, symbol, order_type, side, quantity, price, limit_value, stop_value, status, timestamp)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         ''', (user_id, data.symbol, data.order_type, data.order, data.order_quantity, data.order_price, 
-              data.limit_value or 0, data.stop_value or 0, "active"))
+              data.limit_value or 0, data.stop_value or 0, stat))
         
         order_id = cursor.lastrowid
         conn.commit()

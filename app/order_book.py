@@ -135,7 +135,7 @@ async def add_limit_order(order):
         heappush(limit_sell_heaps[symbol], (limit_price, order_id, order))
     
     order_dict = order.dict()
-    order_dict["status"] = "inactive"
+    order_dict["status"] = "active"
     await manager.send_to_user(order.user_id, json.dumps({"data_type": "new_order", "data": order_dict}))
 
 
@@ -152,7 +152,7 @@ async def add_stop_loss_order(order):
         heappush(stop_sell_heaps[symbol], (-stop_price, order_id, order))
     
     order_dict = order.dict()
-    order_dict["status"] = "inactive"
+    order_dict["status"] = "active"
     await manager.send_to_user(order.user_id, json.dumps({"data_type": "new_order", "data": order_dict}))
 
 

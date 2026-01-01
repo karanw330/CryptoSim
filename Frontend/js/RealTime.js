@@ -335,7 +335,7 @@ second_socket.onmessage = function (event) {
             const order = user_trade_data.data[index];
             if (order.status === "completed") {
                 if (last) last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
-            } else if (order.status === "active" || order.status === "inactive") {
+            } else if (order.status === "active") {
                 if (inactive_span) inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
             }
         }
@@ -345,7 +345,7 @@ second_socket.onmessage = function (event) {
         const order = user_trade_data.data;
         if (order.status === "completed") {
             if (last) last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
-        } else if (order.status === "active" || order.status === "inactive") {
+        } else if (order.status === "active") {
             if (inactive_span) inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
         }
     }
@@ -947,7 +947,7 @@ function showOrderModal() {
         "order_price": Number(order_price.value),
         "limit_value": Number(limit_value.value),
         "stop_value": Number(stop_value.value),
-        "status": "inactive",
+        "status": "active",
         "symbol": curr_order_symbol,
         "date": today_date,
         "time": curr_time
@@ -1100,7 +1100,7 @@ function orderDetails() {
             "order_price": Number(order_price.value),
             "limit_value": Number(limit_value.value),
             "stop_value": Number(stop_value.value),
-            "status": "inactive",
+            "status": "active",
             "symbol": curr_order_symbol,
             "date": today_date,
             "time": curr_time
