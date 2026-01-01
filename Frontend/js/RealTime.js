@@ -178,13 +178,20 @@ first_socket.onmessage = function (event) {
         }
     }
 
+    // Update active order cards for this symbol
+    const orderCards = document.querySelectorAll(`.order-price-change[data-symbol="${stocks_data.symbol}"]`);
+    orderCards.forEach(card => {
+        const entryPrice = parseFloat(card.getAttribute('data-entry'));
+        const livePrice = profile[stocks_data.symbol].price;
+        if (entryPrice && livePrice) {
+            const perc = (((livePrice - entryPrice) / entryPrice) * 100).toFixed(2);
+            card.textContent = (perc >= 0 ? '+' : '') + perc + '%';
+            card.style.color = perc >= 0 ? '#00ff88' : '#ff4757';
+        }
+    });
+
     // Debounce or conditional refresh for dashboard stats to avoid over-rendering
-    // For now, let's just update the holdings list if it's visible or just call sync
     if (document.getElementById('dashboard_holdings_list')) {
-        // We could optimize this by only updating the specific coin row, 
-        // but for a few coins, syncDashboard is fine and simpler.
-        // To avoid 100s of calls per second (since 6 coins tick independently), 
-        // we can throttle it.
         if (!window._last_sync || Date.now() - window._last_sync > 2000) {
             syncDashboard();
             window._last_sync = Date.now();
@@ -225,7 +232,9 @@ function createActiveOrderCard(order) {
                         <p class="order-value trade-order-type" data-type="${order_buy_sell.trim()}">${order_buy_sell}</p>
                     </div>
                 </div>
-                <div class="order-price-change" id="order-${order_id}_order_change">${profile[order_symbol].price ? (((Number(profile[order_symbol].price) - calc_new_entry_price) / Number(calc_new_entry_price)) * 100).toFixed(2) : 0}%</div>
+                <div class="order-price-change" id="order-${order_id}_order_change" data-symbol="${order_symbol}" data-entry="${calc_new_entry_price}">
+                    ${profile[order_symbol].price ? (((Number(profile[order_symbol].price) - calc_new_entry_price) / Number(calc_new_entry_price)) * 100).toFixed(2) : 0}%
+                </div>
             </div>
 
             <div class="order-card-body">
