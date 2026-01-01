@@ -70,11 +70,16 @@ stop_sell_heaps: Dict[str, List[Tuple[float, int, Any]]] = defaultdict(list)
 
 async def market(details):
     details_dict = details.dict()
-    details_dict["status"] = "active"
-    # New orders are broadcasted so everyone sees their own update? 
-    # Actually, new orders should also probably be send_to_user if they are private.
-    # But for simplicity, we can broadcast and let frontend filter, 
-    # OR better: use targeted messaging here too.
+    # Market orders execute immediately
+    execute_trade_db(
+        details.order_id, 
+        details.symbol, 
+        details.order_price, 
+        details.order_quantity, 
+        details.order, 
+        details.user_id
+    )
+    details_dict["status"] = "completed"
     await manager.send_to_user(details.user_id, json.dumps({"data_type":"new_order","data":details_dict}))
 
 def recover_active_orders():

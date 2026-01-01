@@ -204,7 +204,7 @@ const last = document.getElementById("last");
 function createActiveOrderCard(order) {
     const order_id = order.order_id || order.id || 1;
     const order_symbol = order.symbol;
-    const order_buy_sell = order.order || order.buy_sell || "Buy";
+    const order_buy_sell = order.order || order.buy_sell || order.side || "Buy";
     const timestamp = order.timestamp || (order.date + " " + order.time);
     const order_date = timestamp.split(' ')[0];
     const order_time = timestamp.split(' ')[1] || "";
@@ -261,7 +261,7 @@ function createActiveOrderCard(order) {
 function createInactiveOrderCard(order) {
     const order_id = order.order_id || order.id || 1;
     const order_symbol = order.symbol;
-    const order_buy_sell = order.order || order.buy_sell || "Buy";
+    const order_buy_sell = order.order || order.buy_sell || order.side || "Buy";
     const timestamp = order.timestamp || (order.date + " " + order.time);
     const order_date = timestamp.split(' ')[0];
     const order_time = timestamp.split(' ')[1] || "";
@@ -333,28 +333,29 @@ second_socket.onmessage = function (event) {
     if (user_trade_data["data_type"] === "static_trades") {
         for (let index = 0; index < user_trade_data.data.length; index++) {
             const order = user_trade_data.data[index];
-            if (order.status === "active") {
-                last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
-            } else if (order.status === "inactive") {
-                inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+            if (order.status === "completed") {
+                if (last) last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
+            } else if (order.status === "active" || order.status === "inactive") {
+                if (inactive_span) inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
             }
         }
     }
     else if (user_trade_data['data_type'] === 'new_order') {
         clearOrderFields();
         const order = user_trade_data.data;
-        if (order.status === "active") {
-            last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
-        } else if (order.status === "inactive") {
-            inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+        if (order.status === "completed") {
+            if (last) last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
+        } else if (order.status === "active" || order.status === "inactive") {
+            if (inactive_span) inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
         }
     }
     else if (user_trade_data['data_type'] === 'limit_triggered' || user_trade_data['data_type'] === 'stop_loss_triggered') {
-        // Remove from pending, optionally add to completed if we had a list for that
+        showTradeNotification(`Order #${user_trade_data.order_id} executed!`, 5000);
+        // Remove from pending
         const order_id = user_trade_data.order_id;
         const element = document.getElementById(`ODID${order_id}`);
         if (element) element.remove();
-        syncDashboard(); // Refresh balances
+        syncDashboard(); // Refresh balances and past orders
     }
 };
 
@@ -387,19 +388,31 @@ async function syncDashboard() {
             }
         }
 
-        // 2. Fetch Orders
+        // 2. Fetch Pending Orders
         const orderRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/orders');
         if (orderRes && orderRes.ok) {
             const orders = await orderRes.json();
-            if (last) last.innerHTML = '';
-            if (inactive_span) inactive_span.innerHTML = '';
-            orders.forEach(order => {
-                if (order.status === 'active') {
-                    if (last) last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
-                } else {
-                    if (inactive_span) inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
-                }
-            });
+            if (inactive_span) {
+                inactive_span.innerHTML = '';
+                orders.forEach(order => {
+                    // Pending orders go to Pending section
+                    if (order.status === 'active' || order.status === 'inactive') {
+                        inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+                    }
+                });
+            }
+        }
+
+        // 3. Fetch Past Trades
+        const tradeRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/trades');
+        if (tradeRes && tradeRes.ok) {
+            const trades = await tradeRes.json();
+            if (last) {
+                last.innerHTML = '';
+                trades.forEach(trade => {
+                    last.insertAdjacentHTML("afterbegin", createActiveOrderCard(trade));
+                });
+            }
         }
 
         // 3. Fetch Portfolio (Holdings)
