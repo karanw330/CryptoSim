@@ -116,11 +116,6 @@ window.profile = {
     }
 }
 
-function orderPercChange(live_price, entry_price) {
-    let change = ((live_price - entry_price) / entry_price) * 100;
-    return change.toFixed(2);
-}
-
 first_socket.onmessage = function (event) {
     let stocks_data = JSON.parse(event.data);
     if (order_type.value === 'market') {
