@@ -175,7 +175,9 @@ async def updateorder(data: OrderUpdate, current_user: User = Depends(get_curren
             stop_value=data.stop_value,
             status="active",
             date="", time="",
-            user_id=current_user.username
+            user_id=current_user.username,
+            order_id=None,
+            entry_price=old['price']
         )
         
         return await order(new_data, current_user)
