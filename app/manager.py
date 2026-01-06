@@ -26,12 +26,8 @@ class WebSocketManager:
         print(f"Client disconnected! {f'User: {username}' if username else ''}")
 
     async def receive(self, ws: WebSocket):
-        try:
-            data = await ws.receive_text()
-            print(f"Received from {ws.client}: {data}")
-        except Exception as e:
-            print("Receive error:", e)
-            await self.disconnect(ws)
+        data = await ws.receive_text()
+        print(f"Received from {ws.client}: {data}")
 
     async def broadcast(self, message: any):
         msg_str = json.dumps(message) if isinstance(message, (dict, list)) else str(message)
