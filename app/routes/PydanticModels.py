@@ -19,6 +19,7 @@ class Del(BaseModel):
     order_id: int
 
 class OrderUpdate(BaseModel):
+    order_id: int
     order_type: str
     order_quantity: float
     order_price: float
