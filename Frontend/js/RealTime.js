@@ -330,7 +330,14 @@ second_socket.onmessage = function (event) {
     let user_trade_data = JSON.parse(event.data);
     console.log("WS Message:", user_trade_data);
 
-    if (user_trade_data["data_type"] === "static_trades") {
+    if (user_trade_data["data_type"] === "balance_update") {
+        const newBalance = parseFloat(user_trade_data.balance_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (document.getElementById("cash_available")) document.getElementById("cash_available").innerText = `$${newBalance}`;
+        if (document.getElementById("buying_power")) document.getElementById("buying_power").innerText = `$${newBalance}`;
+        // Refresh dashboard stats to update Total Equity/P&L
+        if (typeof syncDashboard === 'function') syncDashboard();
+    }
+    else if (user_trade_data["data_type"] === "static_trades") {
         for (let index = 0; index < user_trade_data.data.length; index++) {
             const order = user_trade_data.data[index];
             if (order.status === "completed") {

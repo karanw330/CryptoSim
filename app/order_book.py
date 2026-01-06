@@ -9,7 +9,7 @@ from app.routes.PydanticModels import OrderData
 #   DB HELPERS
 # =========================
 
-def execute_trade_db(order_id, symbol, price, quantity, side, user_id):
+async def execute_trade_db(order_id, symbol, price, quantity, side, user_id):
     conn = get_db_connection()
     c = conn.cursor()
     
@@ -42,6 +42,16 @@ def execute_trade_db(order_id, symbol, price, quantity, side, user_id):
         c.execute('UPDATE users SET balance_usd = balance_usd + ? WHERE username = ?', 
                   (quantity * price, user_id))
         
+    # 4. Fetch and Push updated balance
+    user_row = c.execute('SELECT balance_usd FROM users WHERE username = ?', (user_id,)).fetchone()
+    if user_row:
+        new_balance = user_row['balance_usd']
+        import asyncio
+        asyncio.create_task(manager.send_to_user(user_id, json.dumps({
+            "data_type": "balance_update",
+            "balance_usd": new_balance
+        })))
+
     conn.commit()
     conn.close()
 
@@ -71,7 +81,7 @@ stop_sell_heaps: Dict[str, List[Tuple[float, int, Any]]] = defaultdict(list)
 async def market(details):
     details_dict = details.dict()
     # Market orders execute immediately
-    execute_trade_db(
+    await execute_trade_db(
         details.order_id, 
         details.symbol, 
         details.order_price, 
@@ -169,7 +179,7 @@ async def match_limit(buy_heap, sell_heap, security: str, last_price: float):
             heappop(buy_heap)
             if not await is_order_active(order_id): continue
             
-            execute_trade_db(order_id, security, limit_price, order.order_quantity, "Buy", order.user_id)
+            await execute_trade_db(order_id, security, limit_price, order.order_quantity, "Buy", order.user_id)
             await manager.send_to_user(order.user_id, json.dumps({
                 "data_type": "limit_triggered", "side": "Buy", "security": security,
                 "order_id": order_id, "limit_price": float(limit_price), "last_price": float(last_price),
@@ -185,7 +195,7 @@ async def match_limit(buy_heap, sell_heap, security: str, last_price: float):
             heappop(sell_heap)
             if not await is_order_active(order_id): continue
             
-            execute_trade_db(order_id, security, limit_price, order.order_quantity, "Sell", order.user_id)
+            await execute_trade_db(order_id, security, limit_price, order.order_quantity, "Sell", order.user_id)
             await manager.send_to_user(order.user_id, json.dumps({
                 "data_type": "limit_triggered", "side": "Sell", "security": security,
                 "order_id": order_id, "limit_price": float(limit_price), "last_price": float(last_price),
@@ -202,7 +212,7 @@ async def match_stop(buy_heap, sell_heap, security: str, last_price: float):
             heappop(buy_heap)
             if not await is_order_active(order_id): continue
             
-            execute_trade_db(order_id, security, stop_price, order.order_quantity, "Buy", order.user_id)
+            await execute_trade_db(order_id, security, stop_price, order.order_quantity, "Buy", order.user_id)
             await manager.send_to_user(order.user_id, json.dumps({
                 "data_type": "stop_loss_triggered", "side": "Buy", "security": security,
                 "order_id": order_id, "stop_price": float(stop_price), "last_price": float(last_price),
@@ -219,7 +229,7 @@ async def match_stop(buy_heap, sell_heap, security: str, last_price: float):
             heappop(sell_heap)
             if not await is_order_active(order_id): continue
             
-            execute_trade_db(order_id, security, stop_price, order.order_quantity, "Sell", order.user_id)
+            await execute_trade_db(order_id, security, stop_price, order.order_quantity, "Sell", order.user_id)
             await manager.send_to_user(order.user_id, json.dumps({
                 "data_type": "stop_loss_triggered", "side": "Sell", "security": security,
                 "order_id": order_id, "stop_price": float(stop_price), "last_price": float(last_price),
