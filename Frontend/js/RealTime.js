@@ -862,6 +862,7 @@ function checkOrderMod() {
 }
 
 function showModifyModal(id) {
+    localStorage.setItem('current_mod_id', id);
 
     console.log(`modify ${id}`);
     let asset = document.getElementById(`ASSET${id}`).innerText;
@@ -1028,7 +1029,14 @@ function update() {
     fetchWithAuth('http://127.0.0.1:8000/updateorder', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "order_type": trx_type, "order_quantity": trx_quan.toString(), "order_limit": trx_limval.toString(), "order_stop": trx_stopval.toString(), "order_price": trx_aggregate.toString() })
+        body: JSON.stringify({
+            "order_id": Number(localStorage.getItem('current_mod_id')), // We need to store this earlier
+            "order_type": trx_type,
+            "order_quantity": trx_quan,
+            "limit_value": trx_limval,
+            "stop_value": trx_stopval,
+            "order_price": Number(trx_aggregate.innerText.replace('$', ''))
+        })
     })
         .then(response => {
             if (!response) return; // handles redirect
@@ -1055,11 +1063,13 @@ function update_conf(temp, status, obj) {
     const in_box = document.getElementById("inner-modify");
 }
 
-function delete_order(odid) {
-    console.log(odid);
-    document.getElementById(`ODID${odid}`).innerHTML = "";
-    // temphtml = box.innerHTML;
-    // box.innerHTML = loadingSVG;
+function delete_order(button_id) {
+    const odid = button_id.replace("DEL", "");
+    console.log("Deleting order ID:", odid);
+    const element = document.getElementById(`ODID${odid}`);
+    if (element) {
+        element.innerHTML = "";
+    }
     fetchWithAuth('http://127.0.0.1:8000/delorder', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
