@@ -152,8 +152,7 @@ async def updateorder(data: OrderUpdate, current_user: User = Depends(get_curren
         if not old or old['status'] != 'active':
             return {"status": "error", "reason": "Order not found or inactive"}
 
-        # 2. Cancel old (with refund logic same as delorder)
-        # We can just call a helper or replicate it here for simplicity
+        # 2. Cancel old
         cursor.execute("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", (data.order_id,))
         if old['side'] == 'Buy':
             cursor.execute("UPDATE users SET balance_usd = balance_usd + ? WHERE username = ?", 
@@ -166,20 +165,21 @@ async def updateorder(data: OrderUpdate, current_user: User = Depends(get_curren
         conn.close()
 
         # 3. Create new order with updated values
-        # We use the existing 'order' endpoint logic by creating a new OrderData object
         new_data = OrderData(
             symbol=old['symbol'],
             order=old['side'],
             order_type=old['order_type'],
-            order_quantity=data.quantity,
-            order_price=data.limit_price if old['order_type'] == 'limit' else old['price'],
-            limit_value=data.limit_price if old['order_type'] == 'limit' else old['limit_value'],
-            stop_value=old['stop_value'],
-            date="", time="", # Not used by endpoint
-            user_id=current_user.username
+            order_quantity=data.order_quantity,
+            order_price=data.order_price,
+            limit_value=data.limit_value,
+            stop_value=data.stop_value,
+            status="active",
+            date="", time="",
+            user_id=current_user.username,
+            order_id=None,
+            entry_price=old['price']
         )
         
-        # We call the 'order' endpoint function directly
         return await order(new_data, current_user)
 
     except Exception as e:

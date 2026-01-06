@@ -848,20 +848,22 @@ window.addEventListener('DOMContentLoaded', validation);
 
 
 function checkOrderMod() {
-    let trx_type = document.getElementById("trxOrderType").innerText;
-    let trx_quan = +document.getElementById("trxVolumeInput").value;
-    let trx_limval = +parseFloat(document.getElementById("trxLimitInput").value);
-    let trx_stopval = +parseFloat(document.getElementById("trxStopInput").value);
-    let trx_aggregate = document.getElementById("trxAggregateSum").innerText;
-    if (trx_type === "LIMIT (BUY)" || trx_type === "LIMIT (SELL)" || trx_type === "STOP-LIMIT (BUY)" || trx_type === "STOP-LIMIT (SELL)") {
-        trx_aggregate.innerText = '$' + String(Number(trx_limval * trx_quan).toFixed(2));
+    let trx_type = document.getElementById("trxOrderType").innerText.toUpperCase();
+    let trx_quan = parseFloat(document.getElementById("trxVolumeInput").value) || 0;
+    let trx_limval = parseFloat(document.getElementById("trxLimitInput").value) || 0;
+    let trx_stopval = parseFloat(document.getElementById("trxStopInput").value) || 0;
+    let trx_aggregate_el = document.getElementById("trxAggregateSum");
+
+    if (trx_type.includes("LIMIT")) {
+        trx_aggregate_el.innerText = '$' + (trx_limval * trx_quan).toFixed(2);
     }
     else {
-        trx_aggregate.innerText = '$' + String(Number(trx_stopval * trx_quan).toFixed(2));
+        trx_aggregate_el.innerText = '$' + (trx_stopval * trx_quan).toFixed(2);
     }
 }
 
 function showModifyModal(id) {
+    localStorage.setItem('current_mod_id', id);
 
     console.log(`modify ${id}`);
     let asset = document.getElementById(`ASSET${id}`).innerText;
@@ -896,6 +898,7 @@ function showModifyModal(id) {
     const modify_modal = document.getElementById("modify-modal");
     modify_modal.classList.add('modal-active');
     document.body.style.overflow = 'hidden';
+    checkOrderMod();
 }
 
 function dismissAlterationPanel() {
@@ -1028,7 +1031,14 @@ function update() {
     fetchWithAuth('http://127.0.0.1:8000/updateorder', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "order_type": trx_type, "order_quantity": trx_quan.toString(), "order_limit": trx_limval.toString(), "order_stop": trx_stopval.toString(), "order_price": trx_aggregate.toString() })
+        body: JSON.stringify({
+            "order_id": Number(localStorage.getItem('current_mod_id')), // We need to store this earlier
+            "order_type": trx_type,
+            "order_quantity": trx_quan,
+            "limit_value": trx_limval,
+            "stop_value": trx_stopval,
+            "order_price": Number(trx_aggregate.innerText.replace('$', ''))
+        })
     })
         .then(response => {
             if (!response) return; // handles redirect
@@ -1055,11 +1065,13 @@ function update_conf(temp, status, obj) {
     const in_box = document.getElementById("inner-modify");
 }
 
-function delete_order(odid) {
-    console.log(odid);
-    document.getElementById(`ODID${odid}`).innerHTML = "";
-    // temphtml = box.innerHTML;
-    // box.innerHTML = loadingSVG;
+function delete_order(button_id) {
+    const odid = button_id.replace("DEL", "");
+    console.log("Deleting order ID:", odid);
+    const element = document.getElementById(`ODID${odid}`);
+    if (element) {
+        element.innerHTML = "";
+    }
     fetchWithAuth('http://127.0.0.1:8000/delorder', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
