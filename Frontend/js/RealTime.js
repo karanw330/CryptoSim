@@ -848,16 +848,17 @@ window.addEventListener('DOMContentLoaded', validation);
 
 
 function checkOrderMod() {
-    let trx_type = document.getElementById("trxOrderType").innerText;
-    let trx_quan = +document.getElementById("trxVolumeInput").value;
-    let trx_limval = +parseFloat(document.getElementById("trxLimitInput").value);
-    let trx_stopval = +parseFloat(document.getElementById("trxStopInput").value);
-    let trx_aggregate = document.getElementById("trxAggregateSum").innerText;
-    if (trx_type === "LIMIT (BUY)" || trx_type === "LIMIT (SELL)" || trx_type === "STOP-LIMIT (BUY)" || trx_type === "STOP-LIMIT (SELL)") {
-        trx_aggregate.innerText = '$' + String(Number(trx_limval * trx_quan).toFixed(2));
+    let trx_type = document.getElementById("trxOrderType").innerText.toUpperCase();
+    let trx_quan = parseFloat(document.getElementById("trxVolumeInput").value) || 0;
+    let trx_limval = parseFloat(document.getElementById("trxLimitInput").value) || 0;
+    let trx_stopval = parseFloat(document.getElementById("trxStopInput").value) || 0;
+    let trx_aggregate_el = document.getElementById("trxAggregateSum");
+
+    if (trx_type.includes("LIMIT")) {
+        trx_aggregate_el.innerText = '$' + (trx_limval * trx_quan).toFixed(2);
     }
     else {
-        trx_aggregate.innerText = '$' + String(Number(trx_stopval * trx_quan).toFixed(2));
+        trx_aggregate_el.innerText = '$' + (trx_stopval * trx_quan).toFixed(2);
     }
 }
 
@@ -897,6 +898,7 @@ function showModifyModal(id) {
     const modify_modal = document.getElementById("modify-modal");
     modify_modal.classList.add('modal-active');
     document.body.style.overflow = 'hidden';
+    checkOrderMod();
 }
 
 function dismissAlterationPanel() {
