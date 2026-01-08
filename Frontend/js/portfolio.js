@@ -48,7 +48,8 @@ window.portfolioData = {
     balance: 0,
     holdings: [],
     prices: {},
-    chart: null
+    chart: null,
+    totalHoldingsValue: 0
 };
 
 window.profile = {
@@ -88,7 +89,7 @@ function updateMovers() {
                 <div class="stock-icon" style="background: ${m.color};">${m.symbol}</div>
                 <div class="stock-details">
                     <h4>${m.name}</h4>
-                    <p>$${m.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                    <p>$${m.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
             </div>
             <div class="stock-price">
@@ -128,7 +129,7 @@ function initChart() {
                     borderWidth: 1,
                     callbacks: {
                         label: function (context) {
-                            return context.label + ': ' + context.parsed.toFixed(1) + '%';
+                            return context.label + ': ' + context.parsed.toFixed(2) + '%';
                         }
                     }
                 }
@@ -144,7 +145,7 @@ function initChart() {
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = "#ffffff";
 
-                const text = window.portfolioData.allocationText || "0.0%",
+                const text = window.portfolioData.allocationText || "0.00%",
                     textX = Math.round((width - ctx.measureText(text).width) / 2),
                     textY = height / 2 - 10;
                 ctx.fillText(text, textX, textY);
@@ -182,7 +183,7 @@ function updateChart(holdings) {
         window.portfolioData.chart.data.labels = dataPoints.map(d => d.label);
         window.portfolioData.chart.data.datasets[0].data = dataPoints.map(d => (d.value / totalVal) * 100);
         window.portfolioData.chart.data.datasets[0].backgroundColor = dataPoints.map(d => d.color);
-        window.portfolioData.allocationText = "100%";
+        window.portfolioData.allocationText = "100.00%";
     }
     window.portfolioData.chart.update();
 }
@@ -195,7 +196,7 @@ async function syncPortfolio() {
         if (userRes && userRes.ok) {
             const userData = await userRes.json();
             window.portfolioData.balance = userData.balance_usd;
-            document.getElementById('dashboard_cash_balance').textContent = `$${userData.balance_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            document.getElementById('dashboard_cash_balance').textContent = `$${userData.balance_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             if (document.getElementById('stockUserMenu')) {
                 document.getElementById('stockUserMenu').textContent = userData.username.substring(0, 2).toUpperCase();
             }
@@ -240,12 +241,12 @@ function renderHoldings() {
                     <div class="stock-icon" style="background: rgba(255,255,255,0.05);"><img src="${prof.logo}" width="100%" height="100%" style="border-radius:50%"></div>
                     <div class="stock-details">
                         <h4>${prof.name}</h4>
-                        <p>${symbol} • ${amount.toFixed(4)} units</p>
+                        <p>${symbol} • ${amount.toFixed(2)} units</p>
                     </div>
                 </div>
                 <div class="stock-price">
-                    <div class="price">$${val.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                    <div class="change" style="color: #888;">@ $${currentPrice.toLocaleString()}</div>
+                    <div class="price">$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div class="change" style="color: #888;">@ $${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
             </div>
         `);
@@ -263,25 +264,47 @@ function updateStats() {
     const totalValue = window.portfolioData.balance + (window.portfolioData.totalHoldingsValue || 0);
     const initialBalance = 100000;
     const totalProfit = totalValue - initialBalance;
-    const profitPerc = (totalProfit / initialBalance) * 100;
+    const totalProfitPerc = (totalProfit / initialBalance) * 100;
 
-    document.getElementById('dashboard_total_value').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    // Calculate Today's P&L based on holdings and their daily percentage change
+    let todayPnL = 0;
+    window.portfolioData.holdings.forEach(item => {
+        const symbolKey = Object.keys(window.profile).find(k => k.includes(item.item_id));
+        const priceData = window.portfolioData.prices[symbolKey];
+        if (priceData) {
+            const currentPrice = priceData.last_price;
+            const openPrice = priceData.openprice || currentPrice / (1 + priceData.perc_change / 100);
+            const dailyChangePrice = currentPrice - openPrice;
+            todayPnL += (item.amount * dailyChangePrice);
+        }
+    });
+
+    const yesterdayValue = totalValue - todayPnL;
+    const todayPerc = yesterdayValue > 0 ? (todayPnL / yesterdayValue) * 100 : 0;
+
+    document.getElementById('dashboard_total_value').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     const percEl = document.getElementById('dashboard_total_perc_change');
-    percEl.textContent = `${profitPerc >= 0 ? '+' : ''}${profitPerc.toFixed(2)}%`;
-    percEl.className = profitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
+    percEl.textContent = `${totalProfitPerc >= 0 ? '+' : ''}${totalProfitPerc.toFixed(2)}%`;
+    percEl.className = totalProfitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
 
     const profitEl = document.getElementById('dashboard_total_profit');
-    profitEl.textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    profitEl.textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     profitEl.className = totalProfit >= 0 ? 'stats-value positive' : 'stats-value negative';
+
+    const todayProfitEl = document.getElementById('dashboard_today_profit');
+    if (todayProfitEl) {
+        todayProfitEl.textContent = `${todayPnL >= 0 ? '+' : '-'}$${Math.abs(todayPnL).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} today`;
+        todayProfitEl.className = `stats-change ${todayPnL >= 0 ? 'positive' : 'negative'}`;
+    }
 
     // Update Performance Section (Today)
     const perfItems = document.querySelectorAll('.performance-item');
     if (perfItems.length > 0) {
         const todayValue = perfItems[0].querySelector('.performance-value');
         if (todayValue) {
-            todayValue.textContent = `${profitPerc >= 0 ? '+' : ''}${profitPerc.toFixed(2)}%`;
-            todayValue.className = `performance-value ${profitPerc >= 0 ? 'positive' : 'negative'}`;
+            todayValue.textContent = `${todayPerc >= 0 ? '+' : ''}${todayPerc.toFixed(2)}%`;
+            todayValue.className = `performance-value ${todayPerc >= 0 ? 'positive' : 'negative'}`;
         }
     }
 }
@@ -297,7 +320,7 @@ function initWebSockets() {
                 window.portfolioData.prices[data.symbol] = data;
 
                 // Throttle updates
-                if (!window._last_ui_update || Date.now() - window._last_ui_update > 1000) {
+                if (!window._last_ui_update || Date.now() - window._last_ui_update > 2000) {
                     renderHoldings();
                     updateStats();
                     updateMovers();
