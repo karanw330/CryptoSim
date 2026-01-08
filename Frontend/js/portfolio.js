@@ -2,7 +2,7 @@
 Chart.defaults.color = '#ffffff';
 Chart.defaults.borderColor = '#3a3a3a';
 
-// --- Shared Utilities (from RealTime.js) ---
+// --- Shared Utilities ---
 async function getAccessToken() {
     let token = localStorage.getItem('access_token');
     if (!token) return null;
@@ -47,9 +47,11 @@ async function fetchWithAuth(url, options = {}) {
 window.portfolioData = {
     balance: 0,
     holdings: [],
+    trades: [],
     prices: {},
     chart: null,
-    totalHoldingsValue: 0
+    totalHoldingsValue: 0,
+    startingCapital: 100000 // Fallback if no trades
 };
 
 window.profile = {
@@ -62,14 +64,11 @@ window.profile = {
 };
 
 // --- Daily Movers Logic ---
-let moversData = [];
-
 function updateMovers() {
     const winnersList = document.getElementById('winners');
     const losersList = document.getElementById('losers');
     if (!winnersList || !losersList) return;
 
-    // Filter out items without price data
     const validMovers = Object.keys(window.profile)
         .map(key => ({
             key,
@@ -86,7 +85,9 @@ function updateMovers() {
     const renderMover = (m) => `
         <div class="stock-item">
             <div class="stock-info">
-                <div class="stock-icon" style="background: ${m.color};">${m.symbol}</div>
+                <div class="stock-icon" style="background: ${m.color}; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                    <img src="${m.logo}" width="80%" height="80%" style="object-fit: contain;">
+                </div>
                 <div class="stock-details">
                     <h4>${m.name}</h4>
                     <p>$${m.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -167,15 +168,16 @@ function updateChart(holdings) {
 
     let totalVal = 0;
     const dataPoints = holdings.map(h => {
-        const p = window.portfolioData.prices[h.item_id] || Object.values(window.portfolioData.prices).find(px => px.symbol.includes(h.item_id));
+        const symbolKey = Object.keys(window.profile).find(k => k.includes(h.item_id));
+        const p = window.portfolioData.prices[symbolKey];
         const price = p ? p.last_price : 0;
         const val = h.amount * price;
         totalVal += val;
-        return { label: h.item_id, value: val, color: window.profile[p?.symbol || Object.keys(window.profile).find(k => k.includes(h.item_id))]?.color || '#888' };
+        return { label: h.item_id, value: val, color: window.profile[symbolKey]?.color || '#888' };
     }).filter(d => d.value > 0);
 
     if (dataPoints.length === 0) {
-        window.portfolioData.allocationText = "0.0%";
+        window.portfolioData.allocationText = "0.00%";
         window.portfolioData.chart.data.labels = ['Empty'];
         window.portfolioData.chart.data.datasets[0].data = [100];
         window.portfolioData.chart.data.datasets[0].backgroundColor = ['#333333'];
@@ -191,7 +193,6 @@ function updateChart(holdings) {
 // --- Dashboard Sync ---
 async function syncPortfolio() {
     try {
-        // 1. Fetch User (Balance)
         const userRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/');
         if (userRes && userRes.ok) {
             const userData = await userRes.json();
@@ -202,18 +203,33 @@ async function syncPortfolio() {
             }
         }
 
-        // 2. Fetch Holdings
         const portfolioRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/items/');
         if (portfolioRes && portfolioRes.ok) {
             window.portfolioData.holdings = await portfolioRes.json();
             renderHoldings();
         }
 
-        // 3. Update Global Stats
+        const tradesRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/trades');
+        if (tradesRes && tradesRes.ok) {
+            window.portfolioData.trades = await tradesRes.json();
+            calculateStartingCapital();
+        }
+
         updateStats();
     } catch (e) {
         console.error("Sync error:", e);
     }
+}
+
+function calculateStartingCapital() {
+    let netSpent = 0;
+    window.portfolioData.trades.forEach(t => {
+        const cost = t.quantity * t.price;
+        if (t.side === 'Buy') netSpent += cost;
+        else if (t.side === 'Sell') netSpent -= cost;
+    });
+    // Starting Capital = Current Cash + Net Cash outflow via trades
+    window.portfolioData.startingCapital = window.portfolioData.balance + netSpent;
 }
 
 function renderHoldings() {
@@ -226,8 +242,9 @@ function renderHoldings() {
     window.portfolioData.holdings.forEach(item => {
         const symbol = item.item_id;
         const amount = item.amount;
-        // Match symbol from profile or prices
-        const priceKey = Object.keys(window.profile).find(k => k.includes(symbol));
+        if (amount <= 0) return;
+
+        const priceKey = Object.keys(window.profile).find(k => k.includes(symbol)) || symbol;
         const priceData = window.portfolioData.prices[priceKey];
         const currentPrice = priceData ? priceData.last_price : 0;
         const val = amount * currentPrice;
@@ -238,7 +255,9 @@ function renderHoldings() {
         list.insertAdjacentHTML('beforeend', `
             <div class="stock-item">
                 <div class="stock-info">
-                    <div class="stock-icon" style="background: rgba(255,255,255,0.05);"><img src="${prof.logo}" width="100%" height="100%" style="border-radius:50%"></div>
+                    <div class="stock-icon" style="background: rgba(255,255,255,0.05); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        ${prof.logo ? `<img src="${prof.logo}" width="100%" height="100%" style="border-radius:50%; object-fit: cover;">` : `<span style="font-size: 12px; color: #888;">${symbol.split(':')[1]?.split('USDT')[0] || symbol}</span>`}
+                    </div>
                     <div class="stock-details">
                         <h4>${prof.name}</h4>
                         <p>${symbol} • ${amount.toFixed(2)} units</p>
@@ -252,7 +271,7 @@ function renderHoldings() {
         `);
     });
 
-    if (window.portfolioData.holdings.length === 0) {
+    if (window.portfolioData.holdings.filter(h => h.amount > 0).length === 0) {
         list.innerHTML = '<div class="stock-item"><div class="stock-info"><p>No holdings found</p></div></div>';
     }
 
@@ -262,35 +281,41 @@ function renderHoldings() {
 
 function updateStats() {
     const totalValue = window.portfolioData.balance + (window.portfolioData.totalHoldingsValue || 0);
-    const initialBalance = 100000;
+    const initialBalance = window.portfolioData.startingCapital || 100000;
     const totalProfit = totalValue - initialBalance;
-    const totalProfitPerc = (totalProfit / initialBalance) * 100;
+    const totalProfitPerc = initialBalance > 0 ? (totalProfit / initialBalance) * 100 : 0;
 
     // Calculate Today's P&L based on holdings and their daily percentage change
     let todayPnL = 0;
     window.portfolioData.holdings.forEach(item => {
+        if (item.amount <= 0) return;
         const symbolKey = Object.keys(window.profile).find(k => k.includes(item.item_id));
         const priceData = window.portfolioData.prices[symbolKey];
         if (priceData) {
             const currentPrice = priceData.last_price;
-            const openPrice = priceData.openprice || currentPrice / (1 + priceData.perc_change / 100);
-            const dailyChangePrice = currentPrice - openPrice;
-            todayPnL += (item.amount * dailyChangePrice);
+            // Fallback: use daily % change to derive open price
+            const openPrice = priceData.openprice || (priceData.perc_change !== 0 ? currentPrice / (1 + priceData.perc_change / 100) : currentPrice);
+            todayPnL += (item.amount * (currentPrice - openPrice));
         }
     });
 
     const yesterdayValue = totalValue - todayPnL;
     const todayPerc = yesterdayValue > 0 ? (todayPnL / yesterdayValue) * 100 : 0;
 
-    document.getElementById('dashboard_total_value').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const totalValEl = document.getElementById('dashboard_total_value');
+    if (totalValEl) totalValEl.textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     const percEl = document.getElementById('dashboard_total_perc_change');
-    percEl.textContent = `${totalProfitPerc >= 0 ? '+' : ''}${totalProfitPerc.toFixed(2)}%`;
-    percEl.className = totalProfitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
+    if (percEl) {
+        percEl.textContent = `${totalProfitPerc >= 0 ? '+' : ''}${totalProfitPerc.toFixed(2)}%`;
+        percEl.className = totalProfitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
+    }
 
     const profitEl = document.getElementById('dashboard_total_profit');
-    profitEl.textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    profitEl.className = totalProfit >= 0 ? 'stats-value positive' : 'stats-value negative';
+    if (profitEl) {
+        profitEl.textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        profitEl.className = totalProfit >= 0 ? 'stats-value positive' : 'stats-value negative';
+    }
 
     const todayProfitEl = document.getElementById('dashboard_today_profit');
     if (todayProfitEl) {
