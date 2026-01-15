@@ -9,15 +9,15 @@ from app.routes.PydanticModels import OrderData
 #   DB HELPERS
 # =========================
 
-async def execute_trade_db(order_id, symbol, price, quantity, side, user_id):
+async def execute_trade_db(order_id, symbol, price, quantity, side, user_id, entry):
     conn = get_db_connection()
     c = conn.cursor()
     
     # 1. Record Trade
     c.execute('''
-        INSERT INTO trades (symbol, price, quantity, timestamp)
-        VALUES (?, ?, ?, datetime('now'))
-    ''', (symbol, price, quantity))
+        INSERT INTO trades (symbol, price, quantity, timestamp, entry)
+        VALUES (?, ?, ?, datetime('now'), ?)
+    ''', (symbol, price, quantity, entry))
     
     # 2. Update Order Status
     c.execute('UPDATE orders SET status = ?, price = ? WHERE order_id = ?', 
@@ -87,7 +87,8 @@ async def market(details):
         details.order_price, 
         details.order_quantity, 
         details.order, 
-        details.user_id
+        details.user_id,
+        details.entry_price
     )
     details_dict["status"] = "completed"
     await manager.send_to_user(details.user_id, json.dumps({"data_type":"new_order","data":details_dict}))
@@ -104,7 +105,7 @@ def recover_active_orders():
         order = OrderData(
             order=row['side'] or "Buy",
             order_id=row['order_id'],
-            entry_price=row['price'], 
+            entry_price=row['entry'],
             order_type=row['order_type'],
             order_quantity=row['quantity'],
             order_price=row['price'],

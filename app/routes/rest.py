@@ -17,6 +17,7 @@ funcDict = {
 @router.post("/order")
 async def order(data: OrderData, current_user: User = Depends(get_current_user)):
     from app.db_init import get_db_connection
+    virtual_price = 0
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -24,25 +25,23 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
         # 1. Validate Balance / Portfolio
         user_id = current_user.username
         
-        if data.order_type == "market" or data.order_type == "limit":
+        if data.order_type == "market" or data.order_type == "limit" or data.order_type == "stop-limit":
             # BUY: Check USD balance
             if data.order == "Buy":
-                cost = data.order_quantity * data.order_price # For Limit, price is limit_price? 
-                                                            # Frontend sends order_price as total value?
-                                                            # Let's inspect OrderData: 
-                                                            # quantity: int?, price: float?
-                
-                # If market buy, price is estimated. 
-                # If limit buy, price is limit.
+                if data.order_type == "market":
+                    virtual_price = data.entry_price
+                else:
+                    virtual_price = data.limit_value
+
                 
                 # Check user balance
                 user = cursor.execute('SELECT balance_usd FROM users WHERE username = ?', (user_id,)).fetchone()
-                if not user or user['balance_usd'] < (data.order_quantity * data.order_price):
+                if not user or user['balance_usd'] < (data.order_quantity * virtual_price):
                     print("Insufficient funds")
                     return {"status": "error", "reason": "Insufficient funds"}
 
                 # Update Balance (Lock funds)
-                new_bal = user['balance_usd'] - (data.order_quantity * data.order_price)
+                new_bal = user['balance_usd'] - (data.order_quantity * virtual_price)
                 cursor.execute('UPDATE users SET balance_usd = ? WHERE username = ?', (new_bal, user_id))
 
             # SELL: Check Coin balance
@@ -70,10 +69,10 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
         else:
             stat="active"
         cursor.execute('''
-            INSERT INTO orders (user_id, symbol, order_type, side, quantity, price, limit_value, stop_value, status, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-        ''', (user_id, data.symbol, data.order_type, data.order, data.order_quantity, data.order_price, 
-              data.limit_value or 0, data.stop_value or 0, stat))
+            INSERT INTO orders (user_id, symbol, order_type, side, quantity, price, limit_value, stop_value, status, timestamp, entry)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)
+        ''', (user_id, data.symbol, data.order_type, data.order, data.order_quantity, data.order_price,
+              data.limit_value or 0, data.stop_value or 0, stat, virtual_price))
         
         order_id = cursor.lastrowid
         conn.commit()

@@ -73,9 +73,9 @@ def init_db():
         # Using the hash from the original code
         default_hash = "$argon2id$v=19$m=65536,t=3,p=4$wagCPXjifgvUFBzq4hqe3w$CYaIb8sB+wtD+Vu/P4uod1+Qof8h+1g7bbDlBID48Rc"
         c.execute('''
-            INSERT INTO users (username, full_name, email, hashed_password, disabled, balance_usd)
+            INSERT INTO users (username, email, sub, hashed_password, disabled, balance_usd)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', ('johndoe', 'John Doe', 'johndoe@example.com', default_hash, 0, 100000.0))
+        ''', ('johndoe', 'johndoe@example.com', "", default_hash, 0, 100000.0))
         
     conn.commit()
     conn.close()

@@ -213,7 +213,7 @@ function createActiveOrderCard(order) {
     const entry_price = order.entry_price || order.price || 0;
     const new_entry_price = entry_price.toLocaleString('en-US');
     const calc_new_entry_price = Number(entry_price);
-
+    console.log(order);
     return `
     <div class="cards-container" id="ODID${order_id}">
         <div class="trade-order-card" style="height: 23vh;margin-bottom: 10px;">
