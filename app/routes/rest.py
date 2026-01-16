@@ -9,7 +9,6 @@ from app.order_book import *
 router = APIRouter()
 
 funcDict = {
-    "market":market,
     "limit": add_limit_order,
     "stop-loss": add_stop_loss_order,
     "stop-limit": stop_limit,
@@ -24,42 +23,50 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
         
         # 1. Validate Balance / Portfolio
         user_id = current_user.username
-        
-        if data.order_type == "market" or data.order_type == "limit" or data.order_type == "stop-limit":
-            # BUY: Check USD balance
-            if data.order == "Buy":
-                if data.order_type == "market":
-                    virtual_price = data.entry_price
-                else:
-                    virtual_price = data.limit_value
 
-                
-                # Check user balance
-                user = cursor.execute('SELECT balance_usd FROM users WHERE username = ?', (user_id,)).fetchone()
-                if not user or user['balance_usd'] < (data.order_quantity * virtual_price):
+            # BUY: Check USD balance
+        if data.order == "Buy":
+            if data.order_type == "market":
+                virtual_price = data.entry_price
+                user = cursor.execute('SELECT balance_usd, locked_usd FROM users WHERE username = ?', (user_id,)).fetchone()
+                if not user or user['balance_usd'] - user['locked_usd'] < (data.order_quantity * virtual_price):
+                    print("Insufficient funds")
+                    return {"status": "error", "reason": "Insufficient funds"}
+                new_bal = user['balance_usd'] - (data.order_quantity * virtual_price)
+                cursor.execute('UPDATE users SET balance_usd = ? WHERE username = ?', (new_bal, user_id))
+            elif data.order_type == "stop-loss":
+                virtual_price = data.stop_value
+                req= data.order_quantity * virtual_price
+                user = cursor.execute('UPDATE users SET locked_usd = locked_usd + ? WHERE username = ? AND balance_usd - locked_usd >= ?', (req,user_id,req,))
+                if not user or cursor.rowcount ==0:   #row count gives number of rows affected by last query
+                    print("Insufficient funds")
+                    return {"status": "error", "reason": "Insufficient funds"}
+            else:
+                virtual_price = data.limit_value
+                req = data.order_quantity * virtual_price
+                user = cursor.execute('UPDATE users SET locked_usd = locked_usd + ? WHERE username = ? AND balance_usd - locked_usd >= ?', (req, user_id, req,))
+                if not user or cursor.rowcount == 0:  # row count gives number of rows affected by last query
                     print("Insufficient funds")
                     return {"status": "error", "reason": "Insufficient funds"}
 
-                # Update Balance (Lock funds)
-                new_bal = user['balance_usd'] - (data.order_quantity * virtual_price)
-                cursor.execute('UPDATE users SET balance_usd = ? WHERE username = ?', (new_bal, user_id))
 
-            # SELL: Check Coin balance
-            elif data.order == "Sell":
-                port = cursor.execute('SELECT amount FROM portfolio WHERE user_id = ? AND symbol = ?', 
-                                   (user_id, data.symbol)).fetchone()
-                
-                # Extract base symbol e.g. BINANCE:BTCUSDT -> BTC ?? 
-                # Frontend sends "BINANCE:BTCUSDT". 
-                
-                if not port or port['amount'] < data.order_quantity:
-                     print("Insufficient assets")
-                     return {"status": "error", "reason": "Insufficient assets"}
-                
-                # Update Portfolio (Lock assets)
-                new_amt = port['amount'] - data.order_quantity
-                cursor.execute('UPDATE portfolio SET amount = ? WHERE user_id = ? AND symbol = ?', 
-                               (new_amt, user_id, data.symbol))
+
+        # SELL: Check Coin balance
+        elif data.order == "Sell":
+            port = cursor.execute('SELECT amount FROM portfolio WHERE user_id = ? AND symbol = ?',
+                               (user_id, data.symbol)).fetchone()
+
+            # Extract base symbol e.g. BINANCE:BTCUSDT -> BTC ??
+            # Frontend sends "BINANCE:BTCUSDT".
+
+            if not port or port['amount'] < data.order_quantity:
+                 print("Insufficient assets")
+                 return {"status": "error", "reason": "Insufficient assets"}
+
+            # Update Portfolio (Lock assets)
+            new_amt = port['amount'] - data.order_quantity
+            cursor.execute('UPDATE portfolio SET amount = ? WHERE user_id = ? AND symbol = ?',
+                           (new_amt, user_id, data.symbol))
 
 
         # 2. Insert into DB
@@ -87,7 +94,7 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
         print(f"Order {order_id} placed: {data}")
         
         if data.order_type == "market":
-            await func(data)
+            pass
         else:
             await func(data)
             
@@ -116,17 +123,13 @@ async def delorder(data: Del, current_user: User = Depends(get_current_user)):
         cursor.execute("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", (data.order_id,))
         
         # 3. Refund/Unlock
-        if order['order_type'] in ['market', 'limit', 'stop-limit']:
-            if order['side'] == 'Buy':
-                # Refund USD: quantity * price (or limit_value?)
-                # In rest.py, Buy lock was: quantity * order_price
-                refund_amt = order['quantity'] * order['price']
-                cursor.execute("UPDATE users SET balance_usd = balance_usd + ? WHERE username = ?", 
-                             (refund_amt, current_user.username))
-            else:
-                # Refund Asset
-                cursor.execute("UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?", 
-                             (order['quantity'], current_user.username, order['symbol']))
+        if order['side'] == 'Buy':
+            cursor.execute("UPDATE users SET locked_usd = locked_usd - ? WHERE username = ?",
+                           (order['price'], current_user.username))
+        else:
+            # Refund Asset
+            cursor.execute("UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?",
+                         (order['quantity'], current_user.username, order['symbol']))
 
         conn.commit()
         conn.close()
@@ -154,8 +157,8 @@ async def updateorder(data: OrderUpdate, current_user: User = Depends(get_curren
         # 2. Cancel old
         cursor.execute("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", (data.order_id,))
         if old['side'] == 'Buy':
-            cursor.execute("UPDATE users SET balance_usd = balance_usd + ? WHERE username = ?", 
-                         (old['quantity'] * old['price'], current_user.username))
+            cursor.execute("UPDATE users SET locked_usd = locked_usd - ? WHERE username = ?",
+                         (old['price'], current_user.username))
         else:
             cursor.execute("UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?", 
                          (old['quantity'], current_user.username, old['symbol']))
