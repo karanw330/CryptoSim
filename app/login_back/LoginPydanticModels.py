@@ -1,19 +1,20 @@
 from pydantic import BaseModel
 
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$wagCPXjifgvUFBzq4hqe3w$CYaIb8sB+wtD+Vu/P4uod1+Qof8h+1g7bbDlBID48Rc",
-        "disabled": False,
-    }
-}
+class LoginRequest(BaseModel):
+    email: str
+    password: str | None = None
+    sub : str | None = None
 
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str | None = None
+    sub: str | None = None
 
 class Token(BaseModel):
     access_token: str
     token_type: str
+    refresh_token: str
 
 
 class TokenData(BaseModel):
@@ -23,9 +24,25 @@ class TokenData(BaseModel):
 class User(BaseModel):
     username: str
     email: str | None = None
-    full_name: str | None = None
+    sub: str | None = None
     disabled: bool | None = None
+    balance_usd: float | None = None
 
 
 class UserInDB(User):
-    hashed_password: str
+    hashed_password: str | None = None
+    sub: str | None = None
+
+class OTPRequest(BaseModel):
+    email: str
+
+class OTPVerify(BaseModel):
+    email: str
+    otp: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class PasswordResetRequest(BaseModel):
+    email: str
+    new_password: str

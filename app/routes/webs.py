@@ -1,7 +1,7 @@
 import asyncio
 import json
 import websocket
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, HTTPException
 import os
 import pytz
 from dotenv import load_dotenv
@@ -9,6 +9,9 @@ load_dotenv()
 import requests
 import datetime
 from app.order_book import price_tick
+from app.login_back.LoginFunctions import get_current_user
+from app.manager import manager
+
 router = APIRouter()
 loop = asyncio.get_event_loop()
 
@@ -24,7 +27,6 @@ def unix_to_ist(unix_timestamp):
     return ist_time
 
 # ---- Manager for all connected clients ----
-from app.manager import manager
 
 connected_clients = set()
 
@@ -46,12 +48,27 @@ ticker_dic = {
 
 @router.websocket("/ws/user/trades")
 async def order_ws(ws: WebSocket):
-    await manager.connect(ws)
+    # Expect token as a query parameter: /ws/user/trades?token=eyJ...
+    token = ws.query_params.get("token")
+    if not token:
+        # Close with policy violation (1008) if no token provided
+        await ws.close(code=1008)
+        return
+
+    try:
+        # validate token and fetch user (will raise HTTPException on failure)
+        current_user = await get_current_user(token)
+    except HTTPException:
+        await ws.close(code=1008)
+        return
+
+    # At this point the user is authenticated; connect and proceed
+    await manager.connect(ws, current_user.username)
     try:
         while True:
             await manager.receive(ws)  # Keep alive
     except Exception:
-        await manager.disconnect(ws)
+        await manager.disconnect(ws, current_user.username)
         print("disconnected")
 
 

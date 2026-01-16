@@ -1,456 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financial Dashboard</title>
-    {% load static %}
-    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}" style="width:50px;height:50px;">
+    <link rel="icon" type="image/png" href="../img/favicon.png" style="width:50px;height:50px;">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
-            color: #e0e0e0;
-            padding: 0px;
-            min-height: 100vh;
-        }
-        
-        .stock-header {
-    background: #111111;
-    border-bottom: 1px solid #333333;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #ffffff;
-}
-
-.stock-header__container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 1rem;
-}
-
-.stock-header__main {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    height: 4rem;
-    gap: 1rem;
-    width: 81.3vw;
-}
-
-.stock-header__logo {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #ffffff;
-    text-decoration: none;
-    flex-shrink: 0;
-}
-
-.stock-header__nav-center {
-    display: flex;
-    align-items: center;
-    justify-content: right;
-    gap: 2rem;
-    width: 100%;
-}
-
-.stock-header__nav-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-shrink: 0;
-}
-
-.stock-header__btn {
-    background: #1a1a1a;
-    border: 1px solid #333333;
-    padding: 0.5rem;
-    border-radius: 0.375rem;
-    cursor: pointer;
-    color: #a3a3a3;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.stock-header__btn:hover {
-    background: #222222;
-    border-color: #404040;
-    color: #ffffff;
-}
-
-.stock-header__user-avatar {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    background: #333333;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    color: #ffffff;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-}
-
-.stock-header__user-avatar:hover {
-    background: #404040;
-}
-        
-        .dashboard {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            width: 100%;
-            max-width: none;
-            margin-top: 30px;
-            padding: 15px;
-        }
-
-        .card {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #3a3a3a;
-        }
-
-        /* Top Row - Stats Boxes */
-        .stats-row {
-            display: flex;
-            flex: 100%;
-            gap: 20px;
-        }
-
-        .stats-box {
-            flex: 1;
-            min-width: 200px;
-            text-align: center;
-        }
-
-        .stats-value {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .stats-label {
-            color: #888;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .stats-change {
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
-        .positive {
-            color: #4ade80;
-        }
-
-        .negative {
-            color: #ef4444;
-        }
-
-        /* Second Row - Chart and Performance */
-        .chart-performance-row {
-            display: flex;
-            flex: 100%;
-            gap: 20px;
-        }
-
-        .chart-section {
-            flex: 2;
-            min-width: 400px;
-            position: relative;
-        }
-
-        .chart-container {
-            width: 100%;
-            height: 250px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        .performance-section {
-            flex: 1;
-            min-width: 250px;
-        }
-
-        .performance-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #3a3a3a;
-        }
-
-        .performance-item:last-child {
-            border-bottom: none;
-        }
-
-        .performance-label {
-            color: #888;
-            font-size: 14px;
-        }
-
-        .performance-value {
-            font-weight: 600;
-        }
-
-        /* Third Row - Stocks and Winners/Losers */
-        .bottom-row {
-            display: flex;
-            flex: 100%;
-            gap: 20px;
-        }
-
-        .stocks-section {
-            flex: 2;
-            min-width: 400px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: #fff;
-            position: sticky;
-            top: 0;
-            background: #2a2a2a;
-            padding-top: 5px;
-            padding-left: 20px;
-            padding-bottom: 8px;
-            z-index: 1;
-            border-radius: 25px;
-        }
-
-        .stock-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #3a3a3a;
-        }
-
-        .stock-item:last-child {
-            border-bottom: none;
-        }
-
-        .stock-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .stock-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            color: white;
-            font-size: 16px;
-        }
-
-        .stock-details h4 {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 2px;
-        }
-
-        .stock-details p {
-            font-size: 12px;
-            color: #888;
-        }
-
-        .stock-price {
-            text-align: right;
-        }
-
-        .stock-price .price {
-            font-weight: 600;
-            margin-bottom: 2px;
-        }
-
-        .stock-price .change {
-            font-size: 12px;
-        }
-
-        .winners-losers-section {
-            flex: 1;
-            min-width: 250px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .winners-losers-tabs {
-            display: flex;
-            margin-bottom: 16px;
-            border-bottom: 1px solid #3a3a3a;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 8px 16px;
-            text-align: center;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.3s ease;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .tab.active {
-            color: #4ade80;
-            border-bottom-color: #4ade80;
-        }
-
-        .tab:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Custom scrollbar */
-        .stocks-section::-webkit-scrollbar,
-        .winners-losers-section::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .stocks-section::-webkit-scrollbar-track,
-        .winners-losers-section::-webkit-scrollbar-track {
-            background: #1a1a1a;
-            border-radius: 3px;
-        }
-
-        .stocks-section::-webkit-scrollbar-thumb,
-        .winners-losers-section::-webkit-scrollbar-thumb {
-            background: #4a4a4a;
-            border-radius: 3px;
-        }
-
-        .stocks-section::-webkit-scrollbar-thumb:hover,
-        .winners-losers-section::-webkit-scrollbar-thumb:hover {
-            background: #5a5a5a;
-        }
-
-        @media (max-width: 500px) {
-            body {
-                padding: 10px;
-            }
-
-            .dashboard {
-                flex-direction: column;
-                gap: 15px;
-            }
-
-            .card {
-                padding: 15px;
-            }
-
-            .stats-row,
-            .chart-performance-row,
-            .bottom-row {
-                flex-direction: column;
-                gap: 15px;
-            }
-
-            .stats-box,
-            .chart-section,
-            .performance-section,
-            .stocks-section,
-            .winners-losers-section {
-                flex: none;
-                min-width: auto;
-                width: 100%;
-                max-height: 300px;
-            }
-
-            .stats-value {
-                font-size: 24px;
-            }
-
-            .chart-container {
-                height: 200px;
-            }
-
-            .stock-info {
-                gap: 8px;
-            }
-
-            .stock-icon {
-                width: 35px;
-                height: 35px;
-                font-size: 14px;
-            }
-
-            .stock-details h4 {
-                font-size: 13px;
-            }
-
-            .stock-details p {
-                font-size: 11px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="../css/portfolio.css">
+    <script src="../js/portfolio.js"></script>
 </head>
+
 <body>
-<header class="stock-header">
+    <header class="stock-header">
         <div class="stock-header__container">
             <div class="stock-header__main">
-                <a href="#" class="stock-header__logo">StockHub</a>
+                <a href="./home.html" class="stock-header__logo" style="position:relative;right:10px;top:-5px;"><img
+                        src="../img/favicon.png"
+                        style="height:auto;width:35px;position:relative;right:10px;top:8px;">TradeSnap</a>
 
                 <div class="stock-header__nav-center">
 
-                <div class="stock-header__nav-right">
-                    <button class="stock-header__btn" aria-label="Portfolio" id="stockPortfolioBtn">📊</button>
-                    <div class="stock-header__user-avatar" role="button" tabindex="0" aria-label="User menu" id="stockUserMenu">JD</div>
+                    <div class="stock-header__nav-right">
+                        <button class="stock-header__btn" aria-label="Home" id="stockHomeBtn"
+                            onclick="window.location.href='./home.html'">🏠</button>
+                        <div class="stock-header__user-avatar" role="button" tabindex="0" aria-label="User menu"
+                            id="stockUserMenu">JD</div>
+                    </div>
                 </div>
             </div>
-        </div>
     </header>
     <div class="dashboard">
         <!-- Top Row - Stats Boxes -->
         <div class="stats-row">
             <div class="card stats-box">
-                <div class="stats-value">$17,985.24</div>
+                <div class="stats-value" id="dashboard_total_value">$0.00</div>
                 <div class="stats-label">Total Value</div>
-                <div class="stats-change positive">+16.7%</div>
+                <div class="stats-change positive" id="dashboard_total_perc_change">+0.0%</div>
             </div>
             <div class="card stats-box">
-                <div class="stats-value positive">+$2,451.67</div>
+                <div class="stats-value positive" id="dashboard_total_profit">+$0.00</div>
                 <div class="stats-label">Total Profit</div>
-                <div class="stats-change positive">+$234.12 today</div>
+                <div class="stats-change positive" id="dashboard_today_profit">+$0.00 today</div>
             </div>
             <div class="card stats-box">
-                <div class="stats-value">19.73</div>
-                <div class="stats-label">P/E Ratio</div>
-                <div class="stats-change negative">-0.3 from avg</div>
+                <div class="stats-value" id="dashboard_cash_balance">$0.00</div>
+                <div class="stats-label">Cash Balance</div>
+                <div class="stats-change" id="dashboard_buying_power">Buying Power</div>
             </div>
         </div>
 
@@ -470,19 +66,19 @@
                 </div>
                 <div class="performance-item">
                     <span class="performance-label">This Week</span>
-                    <span class="performance-value positive">+5.7%</span>
+                    <span class="performance-value" id="perf_week">---</span>
                 </div>
                 <div class="performance-item">
                     <span class="performance-label">This Month</span>
-                    <span class="performance-value positive">+12.4%</span>
+                    <span class="performance-value" id="perf_month">---</span>
                 </div>
                 <div class="performance-item">
                     <span class="performance-label">3 Months</span>
-                    <span class="performance-value positive">+18.9%</span>
+                    <span class="performance-value" id="perf_3month">---</span>
                 </div>
                 <div class="performance-item">
                     <span class="performance-label">1 Year</span>
-                    <span class="performance-value positive">+24.6%</span>
+                    <span class="performance-value" id="perf_1year">---</span>
                 </div>
             </div>
         </div>
@@ -490,109 +86,13 @@
         <!-- Third Row - Stocks and Winners/Losers -->
         <div class="bottom-row">
             <div class="card stocks-section">
-                <h3 class="section-title">Top Holdings</h3>
-                <div class="stock-item">
-                    <div class="stock-info">
-                        <div class="stock-icon" style="background: #3b82f6;">A</div>
-                        <div class="stock-details">
-                            <h4>Apple Inc.</h4>
-                            <p>AAPL • Technology</p>
+                <h3 class="section-title">Your Holdings</h3>
+                <div id="dashboard_holdings_list">
+                    <!-- Dynamic holdings will be inserted here -->
+                    <div class="stock-item">
+                        <div class="stock-info">
+                            <p>Loading holdings...</p>
                         </div>
-                    </div>
-                    <div class="stock-price">
-                        <div class="price">$175.43</div>
-                        <div class="change positive">+2.3%</div>
-                    </div>
-                </div>
-                <div class="stock-item">
-                    <div class="stock-info">
-                        <div class="stock-icon" style="background: #06b6d4;">M</div>
-                        <div class="stock-details">
-                            <h4>Microsoft Corp.</h4>
-                            <p>MSFT • Technology</p>
-                        </div>
-                    </div>
-                    <div class="stock-price">
-                        <div class="price">$342.56</div>
-                        <div class="change positive">+1.8%</div>
-                    </div>
-                </div>
-                <div class="stock-item">
-                    <div class="stock-info">
-                        <div class="stock-icon" style="background: #10b981;">T</div>
-                        <div class="stock-details">
-                            <h4>Tesla Inc.</h4>
-                            <p>TSLA • Automotive</p>
-                        </div>
-                    </div>
-                    <div class="stock-price">
-                        <div class="price">$248.12</div>
-                        <div class="change negative">-0.9%</div>
-                    </div>
-                </div>
-                <div class="stock-item">
-                    <div class="stock-info">
-                        <div class="stock-icon" style="background: #8b5cf6;">G</div>
-                        <div class="stock-details">
-                            <h4>Alphabet Inc.</h4>
-                            <p>GOOGL • Technology</p>
-                        </div>
-                    </div>
-                    <div class="stock-price">
-                        <div class="price">$2,756.78</div>
-                        <div class="change positive">+3.2%</div>
-                    </div>
-                </div>
-                <div class="stock-item">
-                    <div class="stock-info">
-                        <div class="stock-icon" style="background: #f59e0b;">A</div>
-                        <div class="stock-details">
-                            <h4>Amazon.com Inc.</h4>
-                            <p>AMZN • E-commerce</p>
-                        </div>
-                    </div>
-                    <div class="stock-price">
-                        <div class="price">$3,234.12</div>
-                        <div class="change positive">+4.1%</div>
-                    </div>
-                </div>
-                <div class="stock-item">
-                    <div class="stock-info">
-                        <div class="stock-icon" style="background: #ef4444;">N</div>
-                        <div class="stock-details">
-                            <h4>Netflix Inc.</h4>
-                            <p>NFLX • Entertainment</p>
-                        </div>
-                    </div>
-                    <div class="stock-price">
-                        <div class="price">$425.67</div>
-                        <div class="change positive">+1.5%</div>
-                    </div>
-                </div>
-                <div class="stock-item">
-                    <div class="stock-info">
-                        <div class="stock-icon" style="background: #06b6d4;">CRM</div>
-                        <div class="stock-details">
-                            <h4>Salesforce Inc.</h4>
-                            <p>CRM • Technology</p>
-                        </div>
-                    </div>
-                    <div class="stock-price">
-                        <div class="price">$189.34</div>
-                        <div class="change positive">+2.7%</div>
-                    </div>
-                </div>
-                <div class="stock-item">
-                    <div class="stock-info">
-                        <div class="stock-icon" style="background: #f59e0b;">JPM</div>
-                        <div class="stock-details">
-                            <h4>JPMorgan Chase</h4>
-                            <p>JPM • Financial</p>
-                        </div>
-                    </div>
-                    <div class="stock-price">
-                        <div class="price">$145.23</div>
-                        <div class="change positive">+1.2%</div>
                     </div>
                 </div>
             </div>
@@ -603,7 +103,7 @@
                     <div class="tab active" onclick="switchTab('winners')">Winners</div>
                     <div class="tab" onclick="switchTab('losers')">Losers</div>
                 </div>
-                
+
                 <div id="winners" class="tab-content active">
                     <div class="stock-item">
                         <div class="stock-info">
@@ -678,7 +178,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div id="losers" class="tab-content">
                     <div class="stock-item">
                         <div class="stock-info">
@@ -756,106 +256,6 @@
             </div>
         </div>
     </div>
-
-    <script>
-        // Set Chart.js defaults for dark theme
-        Chart.defaults.color = '#ffffff';
-        Chart.defaults.borderColor = '#3a3a3a';
-
-        // Portfolio Donut Chart
-        const portfolioCtx = document.getElementById('portfolioChart').getContext('2d');
-        const portfolioChart = new Chart(portfolioCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Apple', 'Microsoft', 'Tesla', 'Google', 'Amazon', 'Netflix'],
-                datasets: [{
-                    data: [28.5, 22.3, 15.8, 12.4, 11.2, 9.8],
-                    backgroundColor: [
-                        '#3b82f6',
-                        '#06b6d4',
-                        '#10b981',
-                        '#8b5cf6',
-                        '#f59e0b',
-                        '#ef4444'
-                    ],
-                    borderWidth: 0,
-                    cutout: '65%'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: '#2a2a2a',
-                        titleColor: '#ffffff',
-                        bodyColor: '#ffffff',
-                        borderColor: '#3a3a3a',
-                        borderWidth: 1,
-                        callbacks: {
-                            label: function(context) {
-                                return context.label + ': ' + context.parsed + '%';
-                            }
-                        }
-                    }
-                },
-                elements: {
-                    arc: {
-                        borderWidth: 2,
-                        borderColor: '#2a2a2a'
-                    }
-                }
-            },
-            plugins: [{
-                beforeDraw: function(chart) {
-                    const width = chart.width,
-                          height = chart.height,
-                          ctx = chart.ctx;
-                    
-                    ctx.restore();
-                    const fontSize = (height / 114).toFixed(2);
-                    ctx.font = `bold ${fontSize}em sans-serif`;
-                    ctx.textBaseline = "middle";
-                    ctx.fillStyle = "#ffffff";
-                    
-                    const text = "63.2%",
-                          textX = Math.round((width - ctx.measureText(text).width) / 2),
-                          textY = height / 2 - 10;
-                    
-                    ctx.fillText(text, textX, textY);
-                    
-                    ctx.font = `${fontSize * 0.6}em sans-serif`;
-                    ctx.fillStyle = "#888888";
-                    const subText = "Allocation",
-                          subTextX = Math.round((width - ctx.measureText(subText).width) / 2),
-                          subTextY = height / 2 + 15;
-                    
-                    ctx.fillText(subText, subTextX, subTextY);
-                    ctx.save();
-                }
-            }]
-        });
-
-        // Tab switching function
-        function switchTab(tabName) {
-            // Remove active class from all tabs and content
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Add active class to clicked tab
-            event.target.classList.add('active');
-            
-            // Show corresponding content
-            document.getElementById(tabName).classList.add('active');
-        }
-
-        // Make chart responsive
-        window.addEventListener('resize', function() {
-            portfolioChart.resize();
-        });
-    </script>
 </body>
+
 </html>

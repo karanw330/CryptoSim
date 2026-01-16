@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,81 +8,89 @@
     <link rel="stylesheet" href="../css/styles.css">
     <link rel="icon" type="image/png" href="../img/favicon.png" style="width:50px;height:50px;">
 </head>
+
 <body>
-<header class="stock-header">
+    <header class="stock-header">
         <div class="stock-header__container">
             <div class="stock-header__main">
-                <a href="#" class="stock-header__logo" style="position:relative;right:10px;top:-5px;"><img src="../img/favicon.png" style="height:auto;width:5%;position:relative;right:10px;top:8px;">TradeSnap</a>
+                <a href="#" class="stock-header__logo" style="position:relative;right:10px;top:-5px;"><img
+                        src="../img/favicon.png"
+                        style="height:auto;width:5%;position:relative;right:10px;top:8px;">TradeSnap</a>
 
                 <div class="stock-header__nav-center">
                     <div class="stock-header__search-container">
                         <div class="selector-container">
-        <button class="selector-button" id="selectorButton">
-            <span class="selected-text" id="selected-symbol">BTC - Bitcoin</span>
-            <svg class="arrow-icon" id="arrowIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6,9 12,15 18,9"></polyline>
-            </svg>
-        </button>
+                            <button class="selector-button" id="selectorButton">
+                                <span class="selected-text" id="selected-symbol">BTC - Bitcoin</span>
+                                <svg class="arrow-icon" id="arrowIcon" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polyline points="6,9 12,15 18,9"></polyline>
+                                </svg>
+                            </button>
 
-        <div class="dropdown-menu" id="dropdownMenu">
-            <ul class="dropdown-list" id="dropdownList">
-                <!-- Items will be populated by JavaScript -->
-            </ul>
-        </div>
-    </div>
+                            <div class="dropdown-menu" id="dropdownMenu">
+                                <ul class="dropdown-list" id="dropdownList">
+                                    <!-- Items will be populated by JavaScript -->
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="stock-header__nav-right">
-                    <button class="stock-header__btn" aria-label="Portfolio" id="stockPortfolioBtn" onclick="window.location.href='{% url 'portfolio' username=username %}'">📊</button>
-                    <div class="stock-header__user-avatar" role="button" tabindex="0" aria-label="User menu" id="stockUserMenu">JD</div>
+                    <button class="stock-header__btn" aria-label="Portfolio" id="stockPortfolioBtn"
+                        onclick="window.location.href='./portfolio.html'">📊</button>
+                    <div class="stock-header__user-avatar" role="button" tabindex="0" aria-label="User menu"
+                        id="stockUserMenu">JD</div>
                 </div>
             </div>
         </div>
 
         <div class="stock-ticker">
             <!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-    <div class="tradingview-widget-copyright"><span class="blue-text"><span style="color:red;">Prices in this widget are delayed</span></span></div>
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <div class="tradingview-widget-copyright"><span class="blue-text"><span style="color:red;">Prices in
+                            this widget are delayed</span></span></div>
 
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-  {
-  "symbols": [
-    {
-      "proName": "BINANCE:BTCUSD",
-      "title": "Bitcoin"
-    },
-      {
-      "proName": "BINANCE:ETHUSD",
-      "title": "Ethereum"
-    },
-      {
-      "proName": "BINANCE:SOLUSD",
-      "title": "Solana"
-    },
-    {
-      "proName": "BINANCE:BNBUSD",
-      "title": "Binance Coin"
-    },
-      {
-      "proName": "BINANCE:XRPUSD",
-      "title": "Ripple"
-    },
-      {
-      "proName": "BINANCE:DOGEUSD",
-      "title": "Dogecoin"
-    }
-  ],
-  "showSymbolLogo": true,
-  "isTransparent": false,
-  "displayMode": "adaptive",
-  "colorTheme": "dark",
-  "locale": "en"
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->
+                <script type="text/javascript"
+                    src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+                        {
+                            "symbols": [
+                                {
+                                    "proName": "BINANCE:BTCUSD",
+                                    "title": "Bitcoin"
+                                },
+                                {
+                                    "proName": "BINANCE:ETHUSD",
+                                    "title": "Ethereum"
+                                },
+                                {
+                                    "proName": "BINANCE:SOLUSD",
+                                    "title": "Solana"
+                                },
+                                {
+                                    "proName": "BINANCE:BNBUSD",
+                                    "title": "Binance Coin"
+                                },
+                                {
+                                    "proName": "BINANCE:XRPUSD",
+                                    "title": "Ripple"
+                                },
+                                {
+                                    "proName": "BINANCE:DOGEUSD",
+                                    "title": "Dogecoin"
+                                }
+                            ],
+                                "showSymbolLogo": true,
+                                    "isTransparent": false,
+                                        "displayMode": "adaptive",
+                                            "colorTheme": "dark",
+                                                "locale": "en"
+                        }
+                    </script>
+            </div>
+            <!-- TradingView Widget END -->
         </div>
     </header>
     <div class="container">
@@ -89,7 +98,8 @@
         <div class="stock-info">
             <div class="stock-header-second">
                 <div class="stock-symbol">
-                    <img id="logo" width="14%" height="14%" style="border-radius:50%;margin-top: 7px;"><h1 id="symbol" style="width:50%"></h1>
+                    <img id="logo" width="14%" height="14%" style="border-radius:50%;margin-top: 7px;">
+                    <h1 id="symbol" style="width:50%"></h1>
                     <div class="stock-name" id="fname"></div>
                 </div>
                 <div class="price-change">
@@ -121,9 +131,9 @@
         <div class="main-content">
             <!-- TradingView Widget BEGIN -->
             <div class="chart-container" id="chart-container" style="width:100%; height:68vh; max-width: 1200px;">
-                 <div style="text-align: center; padding-top: 30%; color: gray;">Loading chart...</div>
+                <div style="text-align: center; padding-top: 30%; color: gray;">Loading chart...</div>
             </div>
-<!-- TradingView Widget END -->
+            <!-- TradingView Widget END -->
 
             <!-- Trading Panel -->
             <div class="trading-panel" style="height:68vh">
@@ -136,7 +146,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Order Type</label>
-                        <select class="form-select" id="order_type" >
+                        <select class="form-select" id="order_type">
                             <option value="market">Market</option>
                             <option value="limit">Limit</option>
                             <option value="stop-limit">Stop Limit</option>
@@ -147,7 +157,7 @@
                         <label class="form-label">Quantity</label>
                         <input type="number" class="form-input" placeholder="0" min="1" id="order_quantity">
                     </div>
-                     <div class="form-group">
+                    <div class="form-group">
                         <label class="form-label">Limit</label>
                         <input type="number" class="form-input" placeholder="0" min="1" id="limit_value">
                     </div>
@@ -164,44 +174,44 @@
 
                 <!-- Account Balance -->
 
+            </div>
         </div>
-    </div>
-    <div class="main-content" style="height:35%;">
-        <div class="panel-section" style="width:20%;height: 100%;min-height:250px;">
-                    <div class="section-title">Account Balance</div>
-                    <div class="balance-item">
-                        <span class="balance-label">Cash Available</span>
-                        <span class="balance-value">$25,847.32</span>
-                    </div>
-                    <div class="balance-item">
-                        <span class="balance-label">Portfolio Value</span>
-                        <span class="balance-value">$157,234.89</span>
-                    </div>
-                    <div class="balance-item">
-                        <span class="balance-label">Total Equity</span>
-                        <span class="balance-value">$183,082.21</span>
-                    </div>
-                    <div class="balance-item">
-                        <span class="balance-label">Day P&L</span>
-                        <span class="balance-value" style="color: #00ff88;">+$2,341.67</span>
-                    </div>
-                    <div class="balance-item">
-                        <span class="balance-label">Buying Power</span>
-                        <span class="balance-value">$51,694.64</span>
-                    </div>
+        <div class="main-content" style="height:35%;">
+            <div class="panel-section" style="width:20%;height: 100%;min-height:250px;">
+                <div class="section-title">Account Balance</div>
+                <div class="balance-item">
+                    <span class="balance-label">Cash Available</span>
+                    <span class="balance-value" id="cash_available">$25,847.32</span>
                 </div>
-        <div class="panel-section" style="width:35%; height: 100%; overflow-y: scroll;min-height:250px;">
-            <div class="section-title" id="current_holdings_heading">Current Holdings</div>
-            <span id="last">
-            </span>
-        </div>
+                <div class="balance-item">
+                    <span class="balance-label">Portfolio Value</span>
+                    <span class="balance-value" id="portfolio_value">$157,234.89</span>
+                </div>
+                <div class="balance-item">
+                    <span class="balance-label">Total Equity</span>
+                    <span class="balance-value" id="total_equity">$183,082.21</span>
+                </div>
+                <div class="balance-item">
+                    <span class="balance-label">Day P&L</span>
+                    <span class="balance-value" id="day_pnl" style="color: #00ff88;">+$2,341.67</span>
+                </div>
+                <div class="balance-item">
+                    <span class="balance-label">Buying Power</span>
+                    <span class="balance-value" id="buying_power">$51,694.64</span>
+                </div>
+            </div>
+            <div class="panel-section" style="width:35%; height: 100%; overflow-y: scroll;min-height:250px;">
+                <div class="section-title" id="current_holdings_heading">Past Orders</div>
+                <span id="last">
+                </span>
+            </div>
 
-        <div class="panel-section" style="width:40.8%;height: 100%;overflow-y: scroll;min-height:250px;">
-            <div class="section-title" id="pending_order_heading">Pending Orders</div>
-            <!--<div class="card-outer-container">-->
-            <span id="last_inactive_order">
-            </span>
-        </div>
+            <div class="panel-section" style="width:40.8%;height: 100%;overflow-y: scroll;min-height:250px;">
+                <div class="section-title" id="pending_order_heading">Pending Orders</div>
+                <!--<div class="card-outer-container">-->
+                <span id="last_inactive_order">
+                </span>
+            </div>
         </div>
     </div>
 
@@ -244,7 +254,8 @@
                 <div class="order-warning">
                     <span class="warning-icon">⚠</span>
                     <div class="warning-text">
-                        Please review your order carefully. Market orders execute immediately at the current market price and cannot be cancelled once placed.
+                        Please review your order carefully. Market orders execute immediately at the current market
+                        price and cannot be cancelled once placed.
                     </div>
                 </div>
 
@@ -261,86 +272,72 @@
         </div>
     </div>
 
-<!--hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh-->
-<div class="trade-modal-overlay" id="modify-modal">
-<div class="trx-alteration-wrapper">
-    <div id="inner-modify">
-        <div class="trx-alteration-topbar">
-            <h2 class="trx-alteration-heading">Modify Your Order</h2>
-            <button class="trx-dismiss-icon" onclick="dismissAlterationPanel()">✕</button>
-        </div>
+    <!--hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh-->
+    <div class="trade-modal-overlay" id="modify-modal">
+        <div class="trx-alteration-wrapper">
+            <div id="inner-modify">
+                <div class="trx-alteration-topbar">
+                    <h2 class="trx-alteration-heading">Modify Your Order</h2>
+                    <button class="trx-dismiss-icon" onclick="dismissAlterationPanel()">✕</button>
+                </div>
 
-        <div class="trx-alteration-content">
-            <div class="trx-param-container">
-                <span class="trx-param-descriptor">Asset</span>
-                <span class="trx-param-display" id="trxAssetIdentifier">Bitcoin</span>
-            </div>
+                <div class="trx-alteration-content">
+                    <div class="trx-param-container">
+                        <span class="trx-param-descriptor">Asset</span>
+                        <span class="trx-param-display" id="trxAssetIdentifier">Bitcoin</span>
+                    </div>
 
-            <div class="trx-param-container">
-                <span class="trx-param-descriptor">Order</span>
-                <span class="trx-param-display" id="trxOrderType">Market</span>
-            </div>
+                    <div class="trx-param-container">
+                        <span class="trx-param-descriptor">Order</span>
+                        <span class="trx-param-display" id="trxOrderType">Market</span>
+                    </div>
 
-            <div class="trx-param-container" id="trxLimitQuote">
-                <span class="trx-param-descriptor">Limit</span>
-                <input
-                    type="number"
-                    class="trx-amount-adjuster"
-                    id="trxLimitInput"
-                    value=1
-                    min=0.01
-                    step=0.1
-                    oninput="checkOrderMod() ">
-            </div>
+                    <div class="trx-param-container" id="trxLimitQuote">
+                        <span class="trx-param-descriptor">Limit</span>
+                        <input type="number" class="trx-amount-adjuster" id="trxLimitInput" value=1 min=0.01 step=0.1
+                            oninput="checkOrderMod() ">
+                    </div>
 
-            <div class="trx-param-container" id="trxStopQuote">
-                <span class="trx-param-descriptor">Stop</span>
-               <input
-                    type="number"
-                    class="trx-amount-adjuster"
-                    id="trxStopInput"
-                    value=1
-                    min=0.01
-                    step=0.1
-                    oninput="checkOrderMod()">
+                    <div class="trx-param-container" id="trxStopQuote">
+                        <span class="trx-param-descriptor">Stop</span>
+                        <input type="number" class="trx-amount-adjuster" id="trxStopInput" value=1 min=0.01 step=0.1
+                            oninput="checkOrderMod()">
 
-            </div>
+                    </div>
 
-            <div class="trx-param-container">
-                <span class="trx-param-descriptor">Quantity</span>
-                <input
-                    type="number"
-                    class="trx-amount-adjuster"
-                    id="trxVolumeInput"
-                    value=1
-                    min=1
-                    step=0.0000001
-                    oninput="checkOrderMod()">
-            </div>
+                    <div class="trx-param-container">
+                        <span class="trx-param-descriptor">Quantity</span>
+                        <input type="number" class="trx-amount-adjuster" id="trxVolumeInput" value=1 min=1
+                            step=0.0000001 oninput="checkOrderMod()">
+                    </div>
 
-            <div class="trx-aggregate-container">
-                <span class="trx-param-descriptor">Total Value</span>
-                <span class="trx-aggregate-display" id="trxAggregateSum">124794.54</span>
-            </div>
+                    <div class="trx-aggregate-container">
+                        <span class="trx-param-descriptor">Total Value</span>
+                        <span class="trx-aggregate-display" id="trxAggregateSum">124794.54</span>
+                    </div>
 
-            <div class="trx-caution-panel">
-                <div class="trx-caution-symbol">⚠</div>
-                <div class="trx-caution-message">
-                    Modifying your order will update the quantity and total value. The changes will be reflected immediately in your portfolio.
+                    <div class="trx-caution-panel">
+                        <div class="trx-caution-symbol">⚠</div>
+                        <div class="trx-caution-message">
+                            Modifying your order will update the quantity and total value. The changes will be reflected
+                            immediately in your portfolio.
+                        </div>
+                    </div>
+
+                    <div class="trx-control-cluster">
+                        <button class="trx-interactive-control trx-abort-control"
+                            onclick="dismissAlterationPanel()">Cancel</button>
+                        <button class="trx-interactive-control trx-execute-control" onclick="update()">Confirm
+                            Changes</button>
+                    </div>
                 </div>
             </div>
-
-            <div class="trx-control-cluster">
-                <button class="trx-interactive-control trx-abort-control" onclick="dismissAlterationPanel()">Cancel</button>
-                <button class="trx-interactive-control trx-execute-control" onclick="update()">Confirm Changes</button>
-            </div>
         </div>
     </div>
-    </div>
-</div>
 
-<div class="ts__notification__container__x92k" id="tsNotificationContainer"></div>
+    <div class="ts__notification__container__x92k" id="tsNotificationContainer"></div>
 
     <script src="../js/RealTime.js?v=1"></script>
 </body>
+
 </html>

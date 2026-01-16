@@ -6,7 +6,16 @@ import threading
 from app.routes import webs, rest
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+from app import db_init
+
+# Initialize DB
+db_init.init_db()
+
+from app.order_book import recover_active_orders
+recover_active_orders()
+
 app = FastAPI(title="Stock Market Simulator")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,9 +29,10 @@ threading.Thread(target=webs.start_market_ws, daemon=True).start()
 
 app.include_router(login.Router, tags=["login"])
 app.include_router(rest.router)
+app.include_router(webs.router)  # <-- expose websocket routes (/ws/market, /ws/user/trades)
 @app.get("/ping")
 async def ping():
     return {"status": "ok"}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=9000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

@@ -1,85 +1,122 @@
 const datetime = new Date();
-today_date = datetime.getFullYear() +'-'+ (datetime.getMonth()+1) +'-'+datetime.getDate();
-const curr_time = datetime.getHours() + ':'+datetime.getMinutes()+':'+datetime.getSeconds();
+today_date = datetime.getFullYear() + '-' + (datetime.getMonth() + 1) + '-' + datetime.getDate();
+const curr_time = datetime.getHours() + ':' + datetime.getMinutes() + ':' + datetime.getSeconds();
 window.selected = 'BTC';
-const price_url= 'ws://127.0.0.1:8000/ws/market'
+const price_url = 'ws://127.0.0.1:8000/ws/market'
 const first_socket = new WebSocket(price_url);
+
+async function getAccessToken() {
+    let token = localStorage.getItem('access_token');
+    if (!token) return null;
+
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp - now < 60) { // Refresh if less than 1 minute left
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (!refreshToken) return token;
+
+            const res = await fetch('http://127.0.0.1:8000/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: refreshToken })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('refresh_token', data.refresh_token);
+                return data.access_token;
+            }
+        }
+    } catch (e) {
+        console.error("Token error", e);
+    }
+    return token;
+}
+
+async function fetchWithAuth(url, options = {}) {
+    const token = await getAccessToken();
+    if (!token) {
+        window.location.replace('./login_page.html');
+        return;
+    }
+    options.headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+    };
+    return fetch(url, options);
+}
 window.curr_price_var = 'btc';
 const order_panel = document.getElementById("order_panel");
 let curr_price = Number("");
 const inactive_span = document.getElementById("last_inactive_order");
 const order_type = document.getElementById('order_type');
 
-    let symbol_placeholder = document.getElementById("symbol");
-    let price_placeholder = document.getElementById("curr_price");
-    let volume_placeholder = document.getElementById("volume");
-    let logo_placeholder = document.getElementById("logo");
-    let fname_placeholder = document.getElementById("fname");
-    let open_placeholder = document.getElementById("open");
-    let high_placeholder = document.getElementById("24H");
-    let low_placeholder = document.getElementById("24L");
-    let change = document.getElementById("change");
+let symbol_placeholder = document.getElementById("symbol");
+let price_placeholder = document.getElementById("curr_price");
+let volume_placeholder = document.getElementById("volume");
+let logo_placeholder = document.getElementById("logo");
+let fname_placeholder = document.getElementById("fname");
+let open_placeholder = document.getElementById("open");
+let high_placeholder = document.getElementById("24H");
+let low_placeholder = document.getElementById("24L");
+let change = document.getElementById("change");
 
-    function clearFields(){
-        symbol_placeholder.innerHTML = '';
-        price_placeholder.innerHTML = '';
-        volume_placeholder.innerHTML = '';
-        logo_placeholder.setAttribute("src", '');
-        fname_placeholder.innerHTML = '';
-        open_placeholder.innerHML = '';
-        high_placeholder.innerHTML = '';
-        low_placeholder.innerHTML = '';
+function clearFields() {
+    symbol_placeholder.innerHTML = '';
+    price_placeholder.innerHTML = '';
+    volume_placeholder.innerHTML = '';
+    logo_placeholder.setAttribute("src", '');
+    fname_placeholder.innerHTML = '';
+    open_placeholder.innerHML = '';
+    high_placeholder.innerHTML = '';
+    low_placeholder.innerHTML = '';
+}
+
+let live_symbol = "";
+let live_fname = "";
+let logo_src = "";
+
+window.profile = {
+    'BINANCE:BTCUSDT': {
+        "live_symbol": "BTC",
+        "live_fname": "Bitcoin",
+        "logo_src": "https://s3-symbol-logo.tradingview.com/crypto/XTVCBTC--big.svg",
+        "curr_price_var": "btc"
+    },
+    'BINANCE:ETHUSDT': {
+        "live_symbol": "ETH",
+        "live_fname": "Ethereum",
+        "logo_src": "https://s3-symbol-logo.tradingview.com/crypto/XTVCETH--big.svg",
+        "curr_price_var": "eth"
+    },
+    'BINANCE:SOLUSDT': {
+        "live_symbol": "SOL",
+        "live_fname": "Solana",
+        "logo_src": "https://s3-symbol-logo.tradingview.com/crypto/XTVCSOL--big.svg",
+        "curr_price_var": "sol"
+    },
+    'BINANCE:BNBUSDT': {
+        "live_symbol": "BNB",
+        "live_fname": "Binance Coin",
+        "logo_src": "https://s3-symbol-logo.tradingview.com/crypto/XTVCBNB--big.svg",
+        "curr_price_var": "bnb"
+    },
+    'BINANCE:XRPUSDT': {
+        "live_symbol": "XRP",
+        "live_fname": "Ripple",
+        "logo_src": "https://s3-symbol-logo.tradingview.com/crypto/XTVCXRP--big.svg",
+        "curr_price_var": "xrp"
+    },
+    'BINANCE:DOGEUSDT': {
+        "live_symbol": "DOGE",
+        "live_fname": "Doge Coin",
+        "logo_src": "https://s3-symbol-logo.tradingview.com/crypto/XTVCDOGE--big.svg",
+        "curr_price_var": "dog"
     }
+}
 
-    let live_symbol="";
-    let live_fname="";
-    let logo_src="";
-
-    window.profile = {
-        'BINANCE:BTCUSDT':{
-            "live_symbol":"BTC",
-            "live_fname":"Bitcoin",
-            "logo_src":"https://s3-symbol-logo.tradingview.com/crypto/XTVCBTC--big.svg",
-            "curr_price_var":"btc"
-        },
-        'BINANCE:ETHUSDT':{
-            "live_symbol":"ETH",
-            "live_fname":"Ethereum",
-            "logo_src":"https://s3-symbol-logo.tradingview.com/crypto/XTVCETH--big.svg",
-            "curr_price_var":"eth"
-        },
-        'BINANCE:SOLUSDT':{
-            "live_symbol":"SOL",
-            "live_fname":"Solana",
-            "logo_src":"https://s3-symbol-logo.tradingview.com/crypto/XTVCSOL--big.svg",
-            "curr_price_var":"sol"
-        },
-        'BINANCE:BNBUSDT':{
-            "live_symbol":"BNB",
-            "live_fname":"Binance Coin",
-            "logo_src":"https://s3-symbol-logo.tradingview.com/crypto/XTVCBNB--big.svg",
-            "curr_price_var":"bnb"
-        },
-        'BINANCE:XRPUSDT':{
-            "live_symbol":"XRP",
-            "live_fname":"Ripple",
-            "logo_src":"https://s3-symbol-logo.tradingview.com/crypto/XTVCXRP--big.svg",
-            "curr_price_var":"xrp"
-        },
-        'BINANCE:DOGEUSDT':{
-            "live_symbol":"DOGE",
-            "live_fname":"Doge Coin",
-            "logo_src":"https://s3-symbol-logo.tradingview.com/crypto/XTVCDOGE--big.svg",
-            "curr_price_var":"dog"
-        }
-    }
-
-    function orderPercChange(live_price, entry_price){
-        let change = ((live_price-entry_price)/entry_price)*100;
-        return change.toFixed(2);
-    }
-
-first_socket.onmessage = function (event){
+first_socket.onmessage = function (event) {
     let stocks_data = JSON.parse(event.data);
     if (order_type.value === 'market') {
         priceChangeMarket();
@@ -91,98 +128,115 @@ first_socket.onmessage = function (event){
     logo_src = profile[stocks_data.symbol].logo_src;
     profile[stocks_data.symbol].price = Number(stocks_data.price);
 
-    if(stocks_data.symbol === 'BINANCE:BTCUSDT'){
-        if(curr_price_var === 'btc'){curr_price = profile["BINANCE:BTCUSDT"].price;}
+    if (stocks_data.symbol === 'BINANCE:BTCUSDT') {
+        if (curr_price_var === 'btc') { curr_price = profile["BINANCE:BTCUSDT"].price; }
     }
-    else if(stocks_data.symbol === 'BINANCE:ETHUSDT'){
-        if(curr_price_var === 'eth'){curr_price = profile["BINANCE:ETHUSDT"].price;}
+    else if (stocks_data.symbol === 'BINANCE:ETHUSDT') {
+        if (curr_price_var === 'eth') { curr_price = profile["BINANCE:ETHUSDT"].price; }
     }
-    else if(stocks_data.symbol === 'BINANCE:SOLUSDT'){
-        if(curr_price_var === 'sol'){curr_price = profile["BINANCE:SOLUSDT"].price;}
+    else if (stocks_data.symbol === 'BINANCE:SOLUSDT') {
+        if (curr_price_var === 'sol') { curr_price = profile["BINANCE:SOLUSDT"].price; }
     }
-    else if(stocks_data.symbol === 'BINANCE:BNBUSDT'){
-        if(curr_price_var === 'bnb'){curr_price = profile["BINANCE:BNBUSDT"].price;}
+    else if (stocks_data.symbol === 'BINANCE:BNBUSDT') {
+        if (curr_price_var === 'bnb') { curr_price = profile["BINANCE:BNBUSDT"].price; }
     }
-    else if(stocks_data.symbol === 'BINANCE:XRPUSDT'){
-        if(curr_price_var === 'xrp'){curr_price = profile["BINANCE:XRPUSDT"].price;}
+    else if (stocks_data.symbol === 'BINANCE:XRPUSDT') {
+        if (curr_price_var === 'xrp') { curr_price = profile["BINANCE:XRPUSDT"].price; }
     }
-    else if(stocks_data.symbol === 'BINANCE:DOGEUSDT'){
-        if(curr_price_var === 'dog'){curr_price = profile["BINANCE:DOGEUSDT"].price;}
+    else if (stocks_data.symbol === 'BINANCE:DOGEUSDT') {
+        if (curr_price_var === 'dog') { curr_price = profile["BINANCE:DOGEUSDT"].price; }
     }
 
     window.symbol = stocks_data.symbol;
-    if (symbol === selected){
+    if (symbol === selected) {
         curr_price = stocks_data.last_price;
-    symbol_placeholder.innerHTML = live_fname;
-    price_placeholder.innerHTML = '$'+ curr_price.toLocaleString('en-US');
-    volume_placeholder.innerHTML = stocks_data.volume;
-    logo_placeholder.setAttribute("src", logo_src);
-    fname_placeholder.innerHTML = stocks_data.symbol;
-    open_placeholder.innerHTML = '$' + stocks_data.openprice.toLocaleString('en-US');
-    high_placeholder.innerHTML = '$'+stocks_data.high.toLocaleString('en-US');
-    low_placeholder.innerHTML = '$'+stocks_data.low.toLocaleString('en-US');
+        symbol_placeholder.innerHTML = live_fname;
+        price_placeholder.innerHTML = '$' + curr_price.toLocaleString('en-US');
+        volume_placeholder.innerHTML = stocks_data.volume;
+        logo_placeholder.setAttribute("src", logo_src);
+        fname_placeholder.innerHTML = stocks_data.symbol;
+        open_placeholder.innerHTML = '$' + stocks_data.openprice.toLocaleString('en-US');
+        high_placeholder.innerHTML = '$' + stocks_data.high.toLocaleString('en-US');
+        low_placeholder.innerHTML = '$' + stocks_data.low.toLocaleString('en-US');
 
-    if(stocks_data.abs>0){
-        document.getElementById("change").innerHTML = '+'+stocks_data.abs_change+' (+'+stocks_data.perc_change +'%)';
-        change.className="change-positive";
-        change.style.color = "#00ff88";
-        change.style.background = 'rgba(0, 255, 136, 0.1)';
+        if (stocks_data.abs > 0) {
+            document.getElementById("change").innerHTML = '+' + stocks_data.abs_change + ' (+' + stocks_data.perc_change + '%)';
+            change.className = "change-positive";
+            change.style.color = "#00ff88";
+            change.style.background = 'rgba(0, 255, 136, 0.1)';
+        }
+        else {
+            document.getElementById("change").innerHTML = stocks_data.abs_change + ' (' + stocks_data.perc_change + '%)';
+            change.className = "change-negative";
+            change.style.color = "#ff4757";
+            change.style.background = 'rgba(255, 71, 87, 0.1)';
+        }
     }
-    else {
-        document.getElementById("change").innerHTML = stocks_data.abs_change + ' (' + stocks_data.perc_change + '%)';
-        change.className="change-negative";
-        change.style.color = "#ff4757";
-        change.style.background = 'rgba(255, 71, 87, 0.1)';
-    }}
+
+    // Update active order cards for this symbol
+    const orderCards = document.querySelectorAll(`.order-price-change[data-symbol="${stocks_data.symbol}"]`);
+    orderCards.forEach(card => {
+        const entryPrice = parseFloat(card.getAttribute('data-entry'));
+        const livePrice = profile[stocks_data.symbol].price;
+        if (entryPrice && livePrice) {
+            const perc = (((livePrice - entryPrice) / entryPrice) * 100).toFixed(2);
+            card.textContent = (perc >= 0 ? '+' : '') + perc + '%';
+            card.style.color = perc >= 0 ? '#00ff88' : '#ff4757';
+        }
+    });
+
+    // Debounce or conditional refresh for dashboard stats to avoid over-rendering
+    if (document.getElementById('dashboard_holdings_list')) {
+        if (!window._last_sync || Date.now() - window._last_sync > 2000) {
+            syncDashboard();
+            window._last_sync = Date.now();
+        }
+    }
 };
 
-first_socket.onclose = function (event){
+first_socket.onclose = function (event) {
     console.log('socket closed');
 }
 
-const user_trade_url = 'ws://127.0.0.1:8000/ws/user/trades';
+const user_trade_url = 'ws://127.0.0.1:8000/ws/user/trades?token=' + (localStorage.getItem('access_token') || "");
 const second_socket = new WebSocket(user_trade_url);
 const last = document.getElementById("last");
-second_socket.onmessage = function (event) {
-    let user_trade_data = JSON.parse(event.data);
-    console.log(user_trade_data);
-    if (user_trade_data["data_type"] === "static_trades"){
-        console.log(user_trade_data);
-        console.log("\n\nstatic data\n\n");
-    for (let index=0;index<user_trade_data.data.length;index++){
-        let order_id = user_trade_data.data[index].id;
-        let order_symbol = user_trade_data.data[index].symbol;
-        let order_buy_sell = user_trade_data.data[index].buy_sell;
-        let order_date = user_trade_data.data[index].date;
-        let order_time = user_trade_data.data[index].time;
-        let order_price = user_trade_data.data[index].price.toLocaleString('en-US');
-        let order_quantity = user_trade_data.data[index].quantity;
-        let order_entry_price = user_trade_data.data[index].entry_price.toLocaleString('en-US');
-        let calc_order_entry_price = Number(user_trade_data.data[index].entry_price);
-        let order_status = user_trade_data.data[index].status;
-        let order_type = user_trade_data.data[index].order_type;
-        if(order_status==="active"){
-        let order_card = `<!--<div class="card-outer-container">-->
+function createActiveOrderCard(order) {
+    const order_id = order.order_id || order.id || 1;
+    const order_symbol = order.symbol;
+    const order_buy_sell = order.order || order.buy_sell || order.side || "Buy";
+    const timestamp = order.timestamp || (order.date + " " + order.time);
+    const order_date = timestamp.split(' ')[0];
+    const order_time = timestamp.split(' ')[1] || "";
+    const order_price = (order.order_price || order.price || 0).toLocaleString('en-US');
+    const order_quantity = order.order_quantity || order.quantity || 0;
+    const entry_price = order.entry_price || order.price || 0;
+    const new_entry_price = entry_price.toLocaleString('en-US');
+    const calc_new_entry_price = Number(entry_price);
+    console.log(order);
+    return `
     <div class="cards-container" id="ODID${order_id}">
         <div class="trade-order-card" style="height: 23vh;margin-bottom: 10px;">
             <div class="order-card-header">
                 <div class="trade-coin-info">
                     <div class="trade-coin-details">
-                        <h3> <img src="${profile[order_symbol].logo_src}" width="23%" height="23%" style="border-radius:50%;margin-top: 0;position:relative;top:5px;"> <span style="position:relative;top:-2px;">${profile[order_symbol].live_fname}</span></h3>
+                        <h3> <img src="${profile[order_symbol].logo_src}" width="23%" height="23%" style="border-radius:50%;margin-top: 0;position:relative;top:5px;">  ${profile[order_symbol].live_fname}</h3>
                         <p></p>
                     </div>
                     <div class="order-info-group">
                         <p class="order-value trade-order-type" data-type="${order_buy_sell.trim()}">${order_buy_sell}</p>
                     </div>
                 </div>
-                <div class="order-price-change" id="order-12345_order_change">${((profile[order_symbol].price-calc_order_entry_price)/order_entry_price)*100}%</div>
+                <div class="order-price-change" id="order-${order_id}_order_change" data-symbol="${order_symbol}" data-entry="${calc_new_entry_price}">
+                    ${profile[order_symbol].price ? (((Number(profile[order_symbol].price) - calc_new_entry_price) / Number(calc_new_entry_price)) * 100).toFixed(2) : 0}%
+                </div>
             </div>
 
             <div class="order-card-body">
                 <div class="order-body-row">
                     <div class="order-info-group">
                         <h4>Entry Price</h4>
-                        <p class="order-value">$${order_entry_price}</p>
+                        <p class="order-value">$${new_entry_price}</p>
                     </div>
                     <div class="order-info-group">
                         <h4>Time Created</h4>
@@ -201,148 +255,25 @@ second_socket.onmessage = function (event) {
                 </div>
             </div>
         </div>
-    </div>`
+    </div>`;
+}
 
-    last.insertAdjacentHTML("afterbegin", order_card);
-    }
-    else if(order_status === "inactive"){
-        console.log(order_status);
-            let stop_price = user_trade_data.data[index].stop_price.toLocaleString('en-US');
-            let limit_price = user_trade_data.data[index].limit.toLocaleString('en-US');
-            let inactive_order_card = `<div class="cards-container" id="ODID${order_id}">
-        <div class="trade-order-card">
-            <div class="order-card-header">
-                <div class="trade-coin-info">
-                    <div class="trade-coin-details">
-                        <h3><img src="${profile[order_symbol].logo_src}" width="17%" height="17%" style="border-radius:50%;margin-top: 0;position:relative;top:5px;"> <span id="ASSET${order_id}">${profile[order_symbol].live_fname}</span></h3>
-                    </div>
-                    <div class="order-info-group">
-                        <p class="order-value trade-order-type" data-type="${order_buy_sell.trim()}" id="BS${order_id}">${order_buy_sell}</p>
-                    </div>
-                    <p style="margin-left: 45%;" id="TYPE${order_id}">${order_type.toUpperCase()}</p>
-                </div>
-            </div>
+function createInactiveOrderCard(order) {
+    const order_id = order.order_id || order.id || 1;
+    const order_symbol = order.symbol;
+    const order_buy_sell = order.order || order.buy_sell || order.side || "Buy";
+    const timestamp = order.timestamp || (order.date + " " + order.time);
+    const order_date = timestamp.split(' ')[0];
+    const order_time = timestamp.split(' ')[1] || "";
+    const order_quantity = order.order_quantity || order.quantity || 0;
+    const entry_price = order.entry_price || order.price || 0;
+    const new_entry_price = entry_price.toLocaleString('en-US');
+    const order_price = (order.order_price || order.price || 0).toLocaleString('en-US');
+    const order_limit = order.limit_value !== undefined ? (order.limit_value === 0 ? "-" : order.limit_value) : (order.limit || "-");
+    const order_stop = order.stop_value !== undefined ? (order.stop_value === 0 ? "-" : order.stop_value) : (order.stop_price || "-");
+    const order_type = (order.order_type || "LIMIT").toUpperCase();
 
-            <div class="order-card-body">
-                <div class="order-body-row">
-                    <div class="order-info-group">
-                        <h4>Entry Price</h4>
-                        <p class="order-value">$<span id="ENTRY${order_id}">${order_entry_price}</span></p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Time Created</h4>
-                        <p class="order-value">${order_date} | ${order_time}</p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Quantity</h4>
-                        <p class="order-value" id="Q${order_id}">${order_quantity}</p>
-                    </div>
-                </div>
-                <div class="order-body-row">
-                    <div class="order-info-group">
-                        <h4>Total Value</h4>
-                        <p class="order-value order-amount-value">$<span id="TOT${order_id}">${order_price}</span></p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Limit</h4>
-                        <p class="order-value order-amount-value">$<span id="LIM${order_id}">${limit_price}</span></p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Stop</h4>
-                        <p class="order-value order-amount-value">$<span id="STOP${order_id}">${stop_price}</span></p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="order-card-actions" style="margin-bottom: 100px;">
-                <button class="order-action-btn order-close-btn" id="DEL${order_id}" onclick="delete_order(this.id)">Close trade</button>
-                <button class="order-action-btn order-modify-btn" id="${order_id}" onclick="showModifyModal(this.id)">Modify Order</button>
-            </div>
-        </div>
-    </div>`
-            inactive_span.insertAdjacentHTML("afterbegin", inactive_order_card);
-        }
-    }
-    }
-    else if(user_trade_data['data_type'] === 'updated_data'){
-        console.log(user_trade_data.data);
-    }
-    else if(user_trade_data['data_type'] === 'error'){
-        console.log(user_trade_data.data);
-    }
-    else if(user_trade_data['data_type'] === 'new_order') {
-        clearOrderFields();
-        console.log("received: ",user_trade_data.data);
-        // let order_id = user_trade_data.data.id;
-        let order_id = 1;
-        let new_entry_price = user_trade_data.data.entry_price.toLocaleString('en-US');
-        let calc_new_entry_price = Number(user_trade_data.data.entry_price);
-        let order_symbol = user_trade_data.data.symbol;
-        let order_buy_sell = user_trade_data.data.order;
-        let order_placed_quantity = user_trade_data.data.order_quantity;
-        let order_date = user_trade_data.data.date;
-        let order_time = user_trade_data.data.time;
-        let order_price = user_trade_data.data.order_price.toLocaleString('en-US');
-        let order_status = user_trade_data.data.status;
-        let order_limit = user_trade_data.data.limit_value;
-        let order_stop = user_trade_data.data.stop_value;
-        if(order_limit === 0){
-            order_limit = "-";
-        }
-        if(order_stop === 0){
-            order_stop = "-";
-        }
-        // let order_status = "active";
-        let order_type = user_trade_data.data.order_type.toUpperCase();
-        if (order_status === "active") {
-            console.log(user_trade_data);
-            console.log("\n\nnew_order\n\n")
-            let order_card = `
-    <div class="cards-container" id="ODID${order_id}">
-        <div class="trade-order-card" style="height: 23vh;margin-bottom: 10px;">
-            <div class="order-card-header">
-                <div class="trade-coin-info">
-                    <div class="trade-coin-details">
-                        <h3> <img src="${profile[order_symbol].logo_src}" width="23%" height="23%" style="border-radius:50%;margin-top: 0;position:relative;top:5px;">  ${profile[order_symbol].live_fname}</h3>
-                        <p></p>
-                    </div>
-                    <div class="order-info-group">
-                        <p class="order-value trade-order-type" data-type="${order_buy_sell.trim()}">${order_buy_sell}</p>
-                    </div>
-                </div>
-                <div class="order-price-change" id="order-12345_order_change">${((Number(profile[order_symbol].price)-calc_new_entry_price)/Number(calc_new_entry_price))*100}%</div>
-            </div>
-
-            <div class="order-card-body">
-                <div class="order-body-row">
-                    <div class="order-info-group">
-                        <h4>Entry Price</h4>
-                        <p class="order-value">$${new_entry_price}</p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Time Created</h4>
-                        <p class="order-value">${order_date} | ${order_time}</p>
-                    </div>
-                </div>
-                <div class="order-body-row">
-                    <div class="order-info-group">
-                        <h4>Quantity</h4>
-                        <p class="order-value order-amount-value">${order_placed_quantity}</p>
-                    </div>
-                    <div class="order-info-group">
-                        <h4>Total Value</h4>
-                        <p class="order-value order-amount-value">$${order_price}</p>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>`
-            last.insertAdjacentHTML("afterbegin", order_card);
-        }
-    else if (order_status === "inactive") {
-        console.log("printing\n")
-            let inactive_order_card = `<div class="cards-container" id="ODID${order_id}">
+    return `<div class="cards-container" id="ODID${order_id}">
         <div class="trade-order-card">
             <div class="order-card-header">
                 <div class="trade-coin-info">
@@ -368,7 +299,7 @@ second_socket.onmessage = function (event) {
                     </div>
                     <div class="order-info-group">
                         <h4>Quantity</h4>
-                        <p class="order-value" id="Q${order_id}">${order_placed_quantity}</p>
+                        <p class="order-value" id="Q${order_id}">${order_quantity}</p>
                     </div>
                 </div>
                 <div class="order-body-row">
@@ -392,346 +323,514 @@ second_socket.onmessage = function (event) {
                 <button class="order-action-btn order-modify-btn" id="${order_id}" onclick="showModifyModal(this.id)">Modify Order</button>
             </div>
         </div>
-    </div>`
-            inactive_span.insertAdjacentHTML("afterbegin", inactive_order_card);
+    </div>`;
+}
+
+second_socket.onmessage = function (event) {
+    let user_trade_data = JSON.parse(event.data);
+    console.log("WS Message:", user_trade_data);
+
+    if (user_trade_data["data_type"] === "balance_update") {
+        const newBalance = parseFloat(user_trade_data.balance_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (document.getElementById("cash_available")) document.getElementById("cash_available").innerText = `$${newBalance}`;
+        if (document.getElementById("buying_power")) document.getElementById("buying_power").innerText = `$${newBalance}`;
+        // Refresh dashboard stats to update Total Equity/P&L
+        if (typeof syncDashboard === 'function') syncDashboard();
+    }
+    else if (user_trade_data["data_type"] === "static_trades") {
+        for (let index = 0; index < user_trade_data.data.length; index++) {
+            const order = user_trade_data.data[index];
+            if (order.status === "completed") {
+                if (last) last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
+            } else if (order.status === "active") {
+                if (inactive_span) inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+            }
         }
+    }
+    else if (user_trade_data['data_type'] === 'new_order') {
+        clearOrderFields();
+        const order = user_trade_data.data;
+        if (order.status === "completed") {
+            if (last) last.insertAdjacentHTML("afterbegin", createActiveOrderCard(order));
+        } else if (order.status === "active") {
+            if (inactive_span) inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+        }
+    }
+    else if (user_trade_data['data_type'] === 'limit_triggered' || user_trade_data['data_type'] === 'stop_loss_triggered') {
+        showTradeNotification(`Order #${user_trade_data.order_id} executed!`, 5000);
+        // Remove from pending
+        const order_id = user_trade_data.order_id;
+        const element = document.getElementById(`ODID${order_id}`);
+        if (element) element.remove();
+        syncDashboard(); // Refresh balances and past orders
     }
 };
 
+async function syncDashboard() {
+    try {
+        // 1. Fetch User Profile (Balance)
+        const userRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/');
+        let userBalance = 0;
+        if (userRes && userRes.ok) {
+            const userData = await userRes.json();
+            userBalance = userData.balance_usd;
+
+            // Update Home dashboard elements
+            if (document.getElementById('cash_available')) {
+                document.getElementById('cash_available').textContent = `$${userBalance.toLocaleString('en-US')}`;
+            }
+            if (document.getElementById('buying_power')) {
+                document.getElementById('buying_power').textContent = `$${userBalance.toLocaleString('en-US')}`;
+            }
+
+            if (document.getElementById('dashboard_buying_power')) {
+                document.getElementById('dashboard_buying_power').textContent = `Buying Power: $${userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            // Update user initials
+            if (document.getElementById('stockUserMenu') && userData.full_name) {
+                const names = userData.full_name.split(' ');
+                const initials = names.map(n => n[0]).join('').toUpperCase();
+                document.getElementById('stockUserMenu').textContent = initials;
+            }
+        }
+
+        // 2. Fetch Pending Orders
+        const orderRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/orders');
+        if (orderRes && orderRes.ok) {
+            const orders = await orderRes.json();
+            if (inactive_span) {
+                inactive_span.innerHTML = '';
+                orders.forEach(order => {
+                    // Pending orders go to Pending section
+                    if (order.status === 'active' || order.status === 'inactive') {
+                        inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
+                    }
+                });
+            }
+        }
+
+        // 3. Fetch Past Trades
+        const tradeRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/trades');
+        if (tradeRes && tradeRes.ok) {
+            const trades = await tradeRes.json();
+            if (last) {
+                last.innerHTML = '';
+                trades.forEach(trade => {
+                    last.insertAdjacentHTML("afterbegin", createActiveOrderCard(trade));
+                });
+            }
+        }
+
+        // 3. Fetch Portfolio (Holdings)
+        const portfolioRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/items/');
+        if (portfolioRes && portfolioRes.ok) {
+            const holdings = await portfolioRes.json();
+            const holdingsList = document.getElementById('dashboard_holdings_list');
+            if (holdingsList) {
+                holdingsList.innerHTML = '';
+                let totalHoldingsValue = 0;
+
+                holdings.forEach(item => {
+                    const symbol = item.item_id;
+                    const amount = item.amount;
+                    const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol.toLowerCase());
+                    const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
+                    const val = amount * currentPrice;
+                    totalHoldingsValue += val;
+
+                    const coinName = priceInfo ? priceInfo.live_fname : symbol;
+                    const logo = priceInfo ? priceInfo.logo_src : "";
+
+                    holdingsList.insertAdjacentHTML('beforeend', `
+                        <div class="stock-item">
+                            <div class="stock-info">
+                                <div class="stock-icon" style="background: rgba(255,255,255,0.1);"><img src="${logo}" width="100%" height="100%" style="border-radius:50%"></div>
+                                <div class="stock-details">
+                                    <h4>${coinName}</h4>
+                                    <p>${symbol} • ${amount.toFixed(4)} units</p>
+                                </div>
+                            </div>
+                            <div class="stock-price">
+                                <div class="price">$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                <div class="change" style="color: #888;">@ $${currentPrice.toLocaleString()}</div>
+                            </div>
+                        </div>
+                    `);
+                });
+
+                // Update Total Stats
+                const totalValue = userBalance + totalHoldingsValue;
+                const initialBalance = 100000;
+                const totalProfit = totalValue - initialBalance;
+                const profitPerc = (totalProfit / initialBalance) * 100;
+
+                if (document.getElementById('dashboard_total_value')) {
+                    document.getElementById('dashboard_total_value').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+                if (document.getElementById('dashboard_total_perc_change')) {
+                    document.getElementById('dashboard_total_perc_change').textContent = `${profitPerc >= 0 ? '+' : ''}${profitPerc.toFixed(2)}%`;
+                    document.getElementById('dashboard_total_perc_change').className = profitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
+                }
+                if (document.getElementById('dashboard_total_profit')) {
+                    document.getElementById('dashboard_total_profit').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    document.getElementById('dashboard_total_profit').className = totalProfit >= 0 ? 'stats-value positive' : 'stats-value negative';
+                }
+
+                // --- Home Page Specific Metrics ---
+                if (document.getElementById('portfolio_value')) {
+                    document.getElementById('portfolio_value').textContent = `$${totalHoldingsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+                if (document.getElementById('total_equity')) {
+                    document.getElementById('total_equity').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+                if (document.getElementById('day_pnl')) {
+                    document.getElementById('day_pnl').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    document.getElementById('day_pnl').style.color = totalProfit >= 0 ? '#00ff88' : '#ff4757';
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Sync error:", e);
+    }
+}
+
+window.addEventListener('load', syncDashboard);
+
 const symbolMap = {
-                "BTC - Bitcoin": { chart: "BINANCE:BTCUSD", symbol: "BINANCE:BTCUSDT", var: "btc" },
-                "ETH - Ethereum": { chart: "BINANCE:ETHUSD", symbol: "BINANCE:ETHUSDT", var: "eth" },
-                "SOL - Solana": { chart: "BINANCE:SOLUSD", symbol: "BINANCE:SOLUSDT", var: "sol" },
-                "BNB - Binance Coin": { chart: "BINANCE:BNBUSD", symbol: "BINANCE:BNBUSDT", var: "bnb" },
-                "XRP - Ripple": { chart: "BINANCE:XRPUSD", symbol: "BINANCE:XRPUSDT", var: "xrp" },
-                "DOGE - Doge Coin": { chart: "BINANCE:DOGEUSD", symbol: "BINANCE:DOGEUSDT", var: "dog" },
-            };
+    "BTC - Bitcoin": { chart: "BINANCE:BTCUSD", symbol: "BINANCE:BTCUSDT", var: "btc" },
+    "ETH - Ethereum": { chart: "BINANCE:ETHUSD", symbol: "BINANCE:ETHUSDT", var: "eth" },
+    "SOL - Solana": { chart: "BINANCE:SOLUSD", symbol: "BINANCE:SOLUSDT", var: "sol" },
+    "BNB - Binance Coin": { chart: "BINANCE:BNBUSD", symbol: "BINANCE:BNBUSDT", var: "bnb" },
+    "XRP - Ripple": { chart: "BINANCE:XRPUSD", symbol: "BINANCE:XRPUSDT", var: "xrp" },
+    "DOGE - Doge Coin": { chart: "BINANCE:DOGEUSD", symbol: "BINANCE:DOGEUSDT", var: "dog" },
+};
 
 class FinancialSelector {
-            constructor() {
-                this.button = document.getElementById('selectorButton');
-                this.menu = document.getElementById('dropdownMenu');
-                this.list = document.getElementById('dropdownList');
-                this.arrow = document.getElementById('arrowIcon');
-                this.selectedText = this.button.querySelector('.selected-text');
-                this.isOpen = false;
-                this.selectedIndex = -1;
+    constructor() {
+        this.button = document.getElementById('selectorButton');
+        this.menu = document.getElementById('dropdownMenu');
+        this.list = document.getElementById('dropdownList');
+        this.arrow = document.getElementById('arrowIcon');
+        this.selectedText = this.button.querySelector('.selected-text');
+        this.isOpen = false;
+        this.selectedIndex = -1;
 
-                this.securities = [
-                    { symbol: 'BTC', name: 'Bitcoin'},
-                    { symbol: 'ETH', name: 'Ethereum'},
-                    { symbol: 'SOL', name: 'Solana'},
-                    { symbol: 'BNB', name: 'Binance Coin'},
-                    { symbol: 'XRP', name: 'Ripple'},
-                    { symbol: 'DOGE', name: 'Doge Coin'}
-                ];
+        this.securities = [
+            { symbol: 'BTC', name: 'Bitcoin' },
+            { symbol: 'ETH', name: 'Ethereum' },
+            { symbol: 'SOL', name: 'Solana' },
+            { symbol: 'BNB', name: 'Binance Coin' },
+            { symbol: 'XRP', name: 'Ripple' },
+            { symbol: 'DOGE', name: 'Doge Coin' }
+        ];
 
-                this.init();
-            }
+        this.init();
+    }
 
-            init() {
-                this.renderItems();
-                this.bindEvents();
-                this.selectItem(0);
-            }
+    init() {
+        this.renderItems();
+        this.bindEvents();
+        this.selectItem(0);
+    }
 
-            renderItems() {
-                this.list.innerHTML = '';
+    renderItems() {
+        this.list.innerHTML = '';
 
-                this.securities.forEach((security, index) => {
-                    const item = document.createElement('li');
-                    item.className = 'dropdown-item';
-                    item.dataset.index = index;
+        this.securities.forEach((security, index) => {
+            const item = document.createElement('li');
+            item.className = 'dropdown-item';
+            item.dataset.index = index;
 
-                    item.innerHTML = `
+            item.innerHTML = `
                         <div>
                             <span class="item-symbol">${security.symbol}</span>
                             <span class="item-name">${security.name}</span>
                         </div>  
                     `;
 
-                    this.list.appendChild(item);
-                });
-            }
+            this.list.appendChild(item);
+        });
+    }
 
-            bindEvents() {
-                // Toggle dropdown
-                this.button.addEventListener('click', () => {
-                    this.toggle();
-                });
-
-                // Item selection
-                this.list.addEventListener('click', (e) => {
-                    const item = e.target.closest('.dropdown-item');
-                    if (item) {
-                        this.selectItem(parseInt(item.dataset.index));
-                    }
-                });
-
-                // Close on outside click
-                document.addEventListener('click', (e) => {
-                    if (!this.button.contains(e.target) && !this.menu.contains(e.target)) {
-                        this.close();
-                    }
-                });
-
-                // Keyboard navigation
-                document.addEventListener('keydown', (e) => {
-                    if (!this.isOpen) return;
-
-                    switch(e.key) {
-                        case 'Escape':
-                            this.close();
-                            break;
-                        case 'ArrowDown':
-                            e.preventDefault();
-                            this.navigateDown();
-                            break;
-                        case 'ArrowUp':
-                            e.preventDefault();
-                            this.navigateUp();
-                            break;
-                        case 'Enter':
-                            e.preventDefault();
-                            if (this.selectedIndex >= 0) {
-                                this.selectItem(this.selectedIndex);
-                            }
-                            break;
-                    }
-                });
-
-                // Hover effects for keyboard navigation
-                this.list.addEventListener('mouseover', (e) => {
-                    const item = e.target.closest('.dropdown-item');
-                    if (item) {
-                        this.clearSelection();
-                        this.selectedIndex = parseInt(item.dataset.index);
-                        item.classList.add('selected');
-                    }
-                });
-            }
-
-            toggle() {
-                if (this.isOpen) {
-                    this.close();
-                } else {
-                    this.open();
-                }
-            }
-
-            open() {
-                this.isOpen = true;
-                this.menu.classList.add('open');
-                this.arrow.classList.add('rotated');
-                this.button.classList.add('active');
-
-                // Reset animations by removing and re-adding items
-                const items = this.list.querySelectorAll('.dropdown-item');
-                items.forEach((item, index) => {
-                    item.style.animation = 'none';
-                    item.offsetHeight; // Trigger reflow
-                    item.style.animation = null;
-                });
-            }
-
-            close() {
-                this.isOpen = false;
-                this.menu.classList.remove('open');
-                this.arrow.classList.remove('rotated');
-                this.button.classList.remove('active');
-                this.clearSelection();
-                this.selectedIndex = -1;
-            }
-
-
-            selectItem(index) {
-                const security = this.securities[index];
-                this.selectedText.textContent = `${security.symbol} - ${security.name}`;
-                let selectedSymbol = document.getElementById("selected-symbol").innerHTML;
-                console.log(selectedSymbol);
-                window.curr_order_symbol = symbolMap[selectedSymbol].symbol;
-
-                let config = symbolMap[selectedSymbol];
-                if (config) {
-                    clearFields();
-                    clearOrderFields();
-                    order_type.value="Market";
-                    renderTradingViewChart(config.chart);
-                    window.selected = config.symbol;
-                    window.curr_price_var = config.var;
-                }
-
-                this.close();
-            }
-
-            navigateDown() {
-                this.selectedIndex = Math.min(this.selectedIndex + 1, this.securities.length - 1);
-                this.updateSelection();
-            }
-
-            navigateUp() {
-                this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
-                this.updateSelection();
-            }
-
-            updateSelection() {
-                this.clearSelection();
-                const items = this.list.querySelectorAll('.dropdown-item');
-                if (items[this.selectedIndex]) {
-                    items[this.selectedIndex].classList.add('selected');
-                    items[this.selectedIndex].scrollIntoView({ block: 'nearest' });
-                }
-            }
-
-            clearSelection() {
-                this.list.querySelectorAll('.dropdown-item').forEach(item => {
-                    item.classList.remove('selected');
-                });
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            new FinancialSelector();
+    bindEvents() {
+        // Toggle dropdown
+        this.button.addEventListener('click', () => {
+            this.toggle();
         });
 
-const StockMarketHeader = {
-            // Initialize user interactions
-            initUserInteractions: function() {
-                const portfolioBtn = document.getElementById('stockPortfolioBtn');
-                const userMenu = document.getElementById('stockUserMenu');
-
-                if (portfolioBtn) {
-                    portfolioBtn.addEventListener('click', function() {
-                        window.dispatchEvent(new CustomEvent('stockPortfolioClick'));
-                    });
-                }
-
-                if (userMenu) {
-                    userMenu.addEventListener('click', function() {
-                        window.dispatchEvent(new CustomEvent('stockUserMenuClick'));
-                    });
-
-                    userMenu.addEventListener('keypress', function(e) {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            window.dispatchEvent(new CustomEvent('stockUserMenuClick'));
-                        }
-                    });
-                }
-            },
-
-            initTickerInteractions: function() {
-                const ticker = document.getElementById('stockTickerContent');
-                if (ticker) {
-                    ticker.addEventListener('mouseenter', () => {
-                        ticker.style.animationPlayState = 'paused';
-                    });
-                    ticker.addEventListener('mouseleave', () => {
-                        ticker.style.animationPlayState = 'running';
-                    });
-                }
-            },
-
-            // Initialize all components
-            init: function() {
-                this.initUserInteractions();
-                this.initTickerInteractions();
+        // Item selection
+        this.list.addEventListener('click', (e) => {
+            const item = e.target.closest('.dropdown-item');
+            if (item) {
+                this.selectItem(parseInt(item.dataset.index));
             }
-        };
+        });
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => StockMarketHeader.init());
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!this.button.contains(e.target) && !this.menu.contains(e.target)) {
+                this.close();
+            }
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (!this.isOpen) return;
+
+            switch (e.key) {
+                case 'Escape':
+                    this.close();
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    this.navigateDown();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    this.navigateUp();
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (this.selectedIndex >= 0) {
+                        this.selectItem(this.selectedIndex);
+                    }
+                    break;
+            }
+        });
+
+        // Hover effects for keyboard navigation
+        this.list.addEventListener('mouseover', (e) => {
+            const item = e.target.closest('.dropdown-item');
+            if (item) {
+                this.clearSelection();
+                this.selectedIndex = parseInt(item.dataset.index);
+                item.classList.add('selected');
+            }
+        });
+    }
+
+    toggle() {
+        if (this.isOpen) {
+            this.close();
         } else {
-            StockMarketHeader.init();
+            this.open();
         }
+    }
+
+    open() {
+        this.isOpen = true;
+        this.menu.classList.add('open');
+        this.arrow.classList.add('rotated');
+        this.button.classList.add('active');
+
+        // Reset animations by removing and re-adding items
+        const items = this.list.querySelectorAll('.dropdown-item');
+        items.forEach((item, index) => {
+            item.style.animation = 'none';
+            item.offsetHeight; // Trigger reflow
+            item.style.animation = null;
+        });
+    }
+
+    close() {
+        this.isOpen = false;
+        this.menu.classList.remove('open');
+        this.arrow.classList.remove('rotated');
+        this.button.classList.remove('active');
+        this.clearSelection();
+        this.selectedIndex = -1;
+    }
+
+
+    selectItem(index) {
+        const security = this.securities[index];
+        this.selectedText.textContent = `${security.symbol} - ${security.name}`;
+        let selectedSymbol = document.getElementById("selected-symbol").innerHTML;
+        console.log(selectedSymbol);
+        window.curr_order_symbol = symbolMap[selectedSymbol].symbol;
+
+        let config = symbolMap[selectedSymbol];
+        if (config) {
+            clearFields();
+            clearOrderFields();
+            order_type.value = "Market";
+            renderTradingViewChart(config.chart);
+            window.selected = config.symbol;
+            window.curr_price_var = config.var;
+        }
+
+        this.close();
+    }
+
+    navigateDown() {
+        this.selectedIndex = Math.min(this.selectedIndex + 1, this.securities.length - 1);
+        this.updateSelection();
+    }
+
+    navigateUp() {
+        this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+        this.updateSelection();
+    }
+
+    updateSelection() {
+        this.clearSelection();
+        const items = this.list.querySelectorAll('.dropdown-item');
+        if (items[this.selectedIndex]) {
+            items[this.selectedIndex].classList.add('selected');
+            items[this.selectedIndex].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    clearSelection() {
+        this.list.querySelectorAll('.dropdown-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    new FinancialSelector();
+});
+
+const StockMarketHeader = {
+    // Initialize user interactions
+    initUserInteractions: function () {
+        const portfolioBtn = document.getElementById('stockPortfolioBtn');
+        const userMenu = document.getElementById('stockUserMenu');
+
+        if (portfolioBtn) {
+            portfolioBtn.addEventListener('click', function () {
+                window.dispatchEvent(new CustomEvent('stockPortfolioClick'));
+            });
+        }
+
+        if (userMenu) {
+            userMenu.addEventListener('click', function () {
+                window.dispatchEvent(new CustomEvent('stockUserMenuClick'));
+            });
+
+            userMenu.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    window.dispatchEvent(new CustomEvent('stockUserMenuClick'));
+                }
+            });
+        }
+    },
+
+    initTickerInteractions: function () {
+        const ticker = document.getElementById('stockTickerContent');
+        if (ticker) {
+            ticker.addEventListener('mouseenter', () => {
+                ticker.style.animationPlayState = 'paused';
+            });
+            ticker.addEventListener('mouseleave', () => {
+                ticker.style.animationPlayState = 'running';
+            });
+        }
+    },
+
+    // Initialize all components
+    init: function () {
+        this.initUserInteractions();
+        this.initTickerInteractions();
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => StockMarketHeader.init());
+} else {
+    StockMarketHeader.init();
+}
 let order = "Buy";
 
 function switchTab(tab, type) {
-            document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
+    document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
 
-            const button = document.getElementById('quickOrderBtn');
-            if (type === 'buy') {
-                button.textContent = 'Place Buy Order';
-                button.classList.remove('sell-btn');
-                order = "Buy";
-            } else {
-                button.textContent = 'Place Sell Order';
-                button.classList.add('sell-btn');
-                order="Sell";
-            }
-            console.log(order);
-        }
+    const button = document.getElementById('quickOrderBtn');
+    if (type === 'buy') {
+        button.textContent = 'Place Buy Order';
+        button.classList.remove('sell-btn');
+        order = "Buy";
+    } else {
+        button.textContent = 'Place Sell Order';
+        button.classList.add('sell-btn');
+        order = "Sell";
+    }
+    console.log(order);
+}
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const price = document.querySelector('.current-price');
-            if (price) {
-                setInterval(() => {
-                    price.classList.add('pulse');
-                    setTimeout(() => price.classList.remove('pulse'), 1000);
-                }, 5000);
-            }
+document.addEventListener('DOMContentLoaded', function () {
+    const price = document.querySelector('.current-price');
+    if (price) {
+        setInterval(() => {
+            price.classList.add('pulse');
+            setTimeout(() => price.classList.remove('pulse'), 1000);
+        }, 5000);
+    }
 
-            let resizeTimer;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(function() {
-                    document.body.style.display = 'none';
-                    document.body.offsetHeight; // trigger reflow
-                    document.body.style.display = '';
-                }, 250);
-            });
-        });
+    let resizeTimer;
+    window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            document.body.style.display = 'none';
+            document.body.offsetHeight; // trigger reflow
+            document.body.style.display = '';
+        }, 250);
+    });
+});
 
 const order_quantity = document.getElementById('order_quantity');
 const order_price = document.getElementById('order_price');
 const stop_value = document.getElementById('stop_value');
 const limit_value = document.getElementById('limit_value');
-order_price.readOnly=true;
+order_price.readOnly = true;
 
-function priceChangeMarket(){
-    order_price.value = (Number(order_quantity.value)*curr_price).toFixed(2);
+function priceChangeMarket() {
+    order_price.value = (Number(order_quantity.value) * curr_price).toFixed(2);
 }
 
-function priceChangeLimit(){
-    order_price.value = (Number(order_quantity.value)*Number(limit_value.value)).toFixed(2);
+function priceChangeLimit() {
+    order_price.value = (Number(order_quantity.value) * Number(limit_value.value)).toFixed(2);
 }
 
-function priceChangeStop(){
-    order_price.value = (Number(order_quantity.value)*Number(stop_value.value)).toFixed(2);
+function priceChangeStop() {
+    order_price.value = (Number(order_quantity.value) * Number(stop_value.value)).toFixed(2);
 }
 
 function clearOrderFields() {
-    order_quantity.value="";
-    order_price.value="";
-    stop_value.value="";
-    limit_value.value="";
+    order_quantity.value = "";
+    order_price.value = "";
+    stop_value.value = "";
+    limit_value.value = "";
 }
 
-function validation(){
+function validation() {
     clearOrderFields();
     if (order_type.value === 'market') {
         limit_value.readOnly = true;
-        stop_value.readOnly=true;
+        stop_value.readOnly = true;
         order_quantity.addEventListener('input', priceChangeMarket);
         order_quantity.removeEventListener('input', priceChangeStop);
         order_quantity.removeEventListener('input', priceChangeLimit);
         limit_value.removeEventListener('input', priceChangeLimit);
         stop_value.removeEventListener('input', priceChangeLimit);
     }
-    else if (order_type.value === 'limit'){
+    else if (order_type.value === 'limit') {
         limit_value.readOnly = false;
-        stop_value.readOnly=true;
-        limit_value.value=Number(curr_price);
+        stop_value.readOnly = true;
+        limit_value.value = Number(curr_price);
         limit_value.addEventListener('input', priceChangeLimit);
         order_quantity.removeEventListener('input', priceChangeMarket);
         order_quantity.addEventListener('input', priceChangeLimit);
         order_quantity.removeEventListener('input', priceChangeStop);
         stop_value.removeEventListener('input', priceChangeLimit);
     }
-    else if (order_type.value === 'stop-loss'){
+    else if (order_type.value === 'stop-loss') {
         limit_value.readOnly = true;
-        stop_value.readOnly=false;
-        stop_value.value=Number(curr_price);
+        stop_value.readOnly = false;
+        stop_value.value = Number(curr_price);
         limit_value.removeEventListener('input', priceChangeLimit);
         order_quantity.addEventListener('input', priceChangeStop);
         order_quantity.removeEventListener('input', priceChangeLimit);
@@ -740,9 +839,9 @@ function validation(){
     }
     else {
         limit_value.readOnly = false;
-        stop_value.readOnly=false;
-        stop_value.value=Number(curr_price);
-        limit_value.value=Number(curr_price);
+        stop_value.readOnly = false;
+        stop_value.value = Number(curr_price);
+        limit_value.value = Number(curr_price);
         limit_value.addEventListener('input', priceChangeLimit);
         order_quantity.removeEventListener('input', priceChangeMarket);
         order_quantity.removeEventListener('input', priceChangeStop);
@@ -755,21 +854,23 @@ order_type.addEventListener('change', validation);
 window.addEventListener('DOMContentLoaded', validation);
 
 
-function checkOrderMod(){
-    let trx_type = document.getElementById("trxOrderType").innerText;
-    let trx_quan = +document.getElementById("trxVolumeInput").value;
-    let trx_limval = +parseFloat(document.getElementById("trxLimitInput").value);
-    let trx_stopval = +parseFloat(document.getElementById("trxStopInput").value);
-    let trx_aggregate = document.getElementById("trxAggregateSum").innerText;
-    if(trx_type === "LIMIT (BUY)" || trx_type === "LIMIT (SELL)" || trx_type === "STOP-LIMIT (BUY)" || trx_type === "STOP-LIMIT (SELL)"){
-        trx_aggregate.innerText = '$'+String(Number(trx_limval*trx_quan).toFixed(2));
+function checkOrderMod() {
+    let trx_type = document.getElementById("trxOrderType").innerText.toUpperCase();
+    let trx_quan = parseFloat(document.getElementById("trxVolumeInput").value) || 0;
+    let trx_limval = parseFloat(document.getElementById("trxLimitInput").value) || 0;
+    let trx_stopval = parseFloat(document.getElementById("trxStopInput").value) || 0;
+    let trx_aggregate_el = document.getElementById("trxAggregateSum");
+
+    if (trx_type.includes("LIMIT")) {
+        trx_aggregate_el.innerText = '$' + (trx_limval * trx_quan).toFixed(2);
     }
-    else{
-        trx_aggregate.innerText = '$'+String(Number(trx_stopval*trx_quan).toFixed(2));
+    else {
+        trx_aggregate_el.innerText = '$' + (trx_stopval * trx_quan).toFixed(2);
     }
 }
 
-function showModifyModal(id){
+function showModifyModal(id) {
+    localStorage.setItem('current_mod_id', id);
 
     console.log(`modify ${id}`);
     let asset = document.getElementById(`ASSET${id}`).innerText;
@@ -779,38 +880,39 @@ function showModifyModal(id){
     let stop = document.getElementById(`STOP${id}`).innerText;
     let bs = document.getElementById(`BS${id}`).innerText;
     let type = document.getElementById(`TYPE${id}`).innerText;
-    document.getElementById("trxOrderType").innerText=type+" ("+bs+")";
-    console.log("ass=",asset, "quan=", quan, "entry=",entry, "lim=",lim, "stop=",stop, "type=",type);
-    document.getElementById("trxAssetIdentifier").innerText=asset;
+    document.getElementById("trxOrderType").innerText = type + " (" + bs + ")";
+    console.log("ass=", asset, "quan=", quan, "entry=", entry, "lim=", lim, "stop=", stop, "type=", type);
+    document.getElementById("trxAssetIdentifier").innerText = asset;
     // document.getElementById("trxEntryQuote").innerText='$'+entry;
     const modLim = document.getElementById("trxLimitInput");
     const modStop = document.getElementById("trxStopInput")
     const modQuan = document.getElementById("trxVolumeInput");
-    modLim.value= lim;
+    modLim.value = lim;
     modStop.value = stop;
     modQuan.value = quan;
-    if(lim==="-"){
+    if (lim === "-") {
         document.getElementById("trxLimitQuote").classList.add("hide_modal");
     }
-    else{
+    else {
         document.getElementById("trxLimitQuote").classList.remove("hide_modal");
     }
-    if(stop==="-"){
+    if (stop === "-") {
         document.getElementById("trxStopQuote").classList.add("hide_modal");
     }
-    else{
+    else {
         document.getElementById("trxStopQuote").classList.remove("hide_modal");
     }
     const modify_modal = document.getElementById("modify-modal");
     modify_modal.classList.add('modal-active');
     document.body.style.overflow = 'hidden';
+    checkOrderMod();
 }
 
-        function dismissAlterationPanel() {
-            let modal = document.getElementById('modify-modal');
-            modal.classList.remove('modal-active');
-            document.body.style.overflow = 'auto';
-        }
+function dismissAlterationPanel() {
+    let modal = document.getElementById('modify-modal');
+    modal.classList.remove('modal-active');
+    document.body.style.overflow = 'auto';
+}
 
 
 function showOrderModal() {
@@ -819,22 +921,22 @@ function showOrderModal() {
         document.getElementById("lim").remove();
         document.getElementById("stop").remove();
     }
-    catch(error){
+    catch (error) {
         console.log(error.message);
     }
-    if(order_type.value === "limit"){
+    if (order_type.value === "limit") {
         html_code = `<div class="summary-row" id="lim">
                         <span class="summary-label">Limit</span>
                         <span class="summary-value" id="limitValue">$${Number(limit_value.value)}</span>
                     </div>`
     }
-    else if(order_type.value === "stop-loss"){
+    else if (order_type.value === "stop-loss") {
         html_code = `<div class="summary-row" id="stop">
                         <span class="summary-label">Stop Value</span>
                         <span class="summary-value" id="stopValue">$${Number(stop_value.value)}</span>
                     </div>`
     }
-    else{
+    else {
         html_code = `<div class="summary-row" id="lim">
                         <span class="summary-label">Limit</span>
                         <span class="summary-value" id="limitValue">$${Number(limit_value.value)}</span>
@@ -844,23 +946,23 @@ function showOrderModal() {
                         <span class="summary-value" id="quantityValue">$${Number(stop.value)}</span>
                     </div>`
     }
-    if(order_type.value !== "market") {
+    if (order_type.value !== "market") {
         document.getElementById("pric").insertAdjacentHTML("beforebegin", html_code);
     }
     let orderConfirm = {
-            "order": order,
-            "entry_price": curr_price,
-            "order_type": order_type.value,
-            "order_quantity": Number(order_quantity.value),
-            "order_price": Number(order_price.value),
-            "limit_value": Number(limit_value.value),
-            "stop_value": Number(stop_value.value),
-            "status": "inactive",
-            "symbol": curr_order_symbol,
-            "date": today_date,
-            "time": curr_time
+        "order": order,
+        "entry_price": curr_price,
+        "order_type": order_type.value,
+        "order_quantity": Number(order_quantity.value),
+        "order_price": Number(order_price.value),
+        "limit_value": Number(limit_value.value),
+        "stop_value": Number(stop_value.value),
+        "status": "active",
+        "symbol": curr_order_symbol,
+        "date": today_date,
+        "time": curr_time
     };
-    if(orderConfirm["order_price"]!=0 && orderConfirm["order_price"]) {
+    if (orderConfirm["order_price"] != 0 && orderConfirm["order_price"]) {
         const modal = document.getElementById('orderConfirmModal');
 
         if (orderConfirm) {
@@ -869,47 +971,47 @@ function showOrderModal() {
 
         modal.classList.add('modal-active');
         document.body.style.overflow = 'hidden';
-    } else{alert("Please fill all the required fields");}
-        }
+    } else { alert("Please fill all the required fields"); }
+}
 
-        function hideOrderModal() {
-            const modal = document.getElementById('orderConfirmModal');
-            modal.classList.remove('modal-active');
-            document.body.style.overflow = 'auto';
-        }
+function hideOrderModal() {
+    const modal = document.getElementById('orderConfirmModal');
+    modal.classList.remove('modal-active');
+    document.body.style.overflow = 'auto';
+}
 
-        function updateModalContent() {
-            if (order_type) {
+function updateModalContent() {
+    if (order_type) {
         console.log(symbol);
-                document.getElementById('orderTypeValue').textContent = order_type.value+" "+order;
-            }
-            if (curr_order_symbol) {
-                document.getElementById('assetValue').textContent = profile[curr_order_symbol].live_fname;
-            }
-            if (order_quantity.value) {
-                document.getElementById('quantityValue').textContent = order_quantity.value;
-            }
-            if (curr_price) {
-                document.getElementById('priceValue').textContent = "$"+curr_price;
-            }
-            if (order_price.value) {
-                document.getElementById('totalValue').textContent = "$"+order_price.value;
-            }
-        }
+        document.getElementById('orderTypeValue').textContent = order_type.value + " " + order;
+    }
+    if (curr_order_symbol) {
+        document.getElementById('assetValue').textContent = profile[curr_order_symbol].live_fname;
+    }
+    if (order_quantity.value) {
+        document.getElementById('quantityValue').textContent = order_quantity.value;
+    }
+    if (curr_price) {
+        document.getElementById('priceValue').textContent = "$" + curr_price;
+    }
+    if (order_price.value) {
+        document.getElementById('totalValue').textContent = "$" + order_price.value;
+    }
+}
 
-        // Close modal when clicking outside
-        document.getElementById('orderConfirmModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                hideOrderModal();
-            }
-        });
+// Close modal when clicking outside
+document.getElementById('orderConfirmModal').addEventListener('click', function (e) {
+    if (e.target === this) {
+        hideOrderModal();
+    }
+});
 
-        // Close modal with Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && document.getElementById('orderConfirmModal').classList.contains('modal-active')) {
-                hideOrderModal();
-            }
-        });
+// Close modal with Escape key
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && document.getElementById('orderConfirmModal').classList.contains('modal-active')) {
+        hideOrderModal();
+    }
+});
 
 
 loadingSVG = `
@@ -918,7 +1020,7 @@ loadingSVG = `
 let temphtml = ``;
 let box = document.getElementById("orderConfirmModal");
 
-function update(){
+function update() {
     let trx_type = document.getElementById("trxOrderType").innerText;
     console.log(typeof trx_type);
     let trx_quan = +document.getElementById("trxVolumeInput").value;
@@ -931,58 +1033,76 @@ function update(){
     console.log(typeof trx_aggregate);
     const in_box = document.getElementById("inner-modify");
     temphtml = in_box.innerHTML;
-        in_box.innerHTML = loadingSVG;
-    fetch('http://127.0.0.1:8000/updateorder', {
-            method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({"order_type":trx_type, "order_quantity":trx_quan.toString(), "order_limit":trx_limval.toString(),"order_stop":trx_stopval.toString(), "order_price":trx_aggregate.toString()})
+    in_box.innerHTML = loadingSVG;
+    in_box.innerHTML = loadingSVG;
+    fetchWithAuth('http://127.0.0.1:8000/updateorder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            "order_id": Number(localStorage.getItem('current_mod_id')), // We need to store this earlier
+            "order_type": trx_type,
+            "order_quantity": trx_quan,
+            "limit_value": trx_limval,
+            "stop_value": trx_stopval,
+            "order_price": Number(trx_aggregate.innerText.replace('$', ''))
         })
-            .then(response => {if (!response.ok) {
-      showConnectionError();
-    }
-    return response.json();
-  })
-            .then(result =>  setTimeout(update_conf, 200, temphtml,result.status,{"order_type":trx_type, "order_quantity":trx_quan, "order_limit":trx_limval,"order_stop":trx_stopval, "order_price":trx_aggregate}));
-}
-
-function update_conf(temp,status, obj){
-            document.getElementById("inner-modify").innerHTML = temp;
-            if (status === "ok") {
-                showTradeNotification(`Order # updated!`, 10000);
-                console.log(obj);
+    })
+        .then(response => {
+            if (!response) return; // handles redirect
+            if (!response.ok) {
+                showConnectionError();
             }
-            else{
-                showTradeFailureNotification("Failed to update order", 10000);
-            }
-            dismissAlterationPanel();
-            const in_box = document.getElementById("inner-modify");
-}
-
-function delete_order(odid){
-    console.log(odid);
-    document.getElementById(`ODID${odid}`).innerHTML="";
-        // temphtml = box.innerHTML;
-        // box.innerHTML = loadingSVG;
-        fetch('http://127.0.0.1:8000/delorder', {
-            method: 'DELETE',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({"order_id":odid})
+            return response.json();
         })
-            .then(response => {if (!response.ok) {
-      showConnectionError();
-    }
-    return response.json();
-  })
-            .then(result =>  setTimeout(del_conf, 200, result.status, odid));
+        .then(result => {
+            if (result) setTimeout(update_conf, 200, temphtml, result.status, { "order_type": trx_type, "order_quantity": trx_quan, "order_limit": trx_limval, "order_stop": trx_stopval, "order_price": trx_aggregate });
+        });
 }
 
-function del_conf(status,odid){
+function update_conf(temp, status, obj) {
+    document.getElementById("inner-modify").innerHTML = temp;
     if (status === "ok") {
-                showTradeNotification(`Order #${odid} deleted!`, 10000);
+        showTradeNotification(`Order # updated!`, 10000);
+        console.log(obj);
+    }
+    else {
+        showTradeFailureNotification("Failed to update order", 10000);
+    }
+    dismissAlterationPanel();
+    const in_box = document.getElementById("inner-modify");
+}
+
+function delete_order(button_id) {
+    const odid = button_id.replace("DEL", "");
+    console.log("Deleting order ID:", odid);
+    const element = document.getElementById(`ODID${odid}`);
+    if (element) {
+        element.innerHTML = "";
+    }
+    fetchWithAuth('http://127.0.0.1:8000/delorder', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ "order_id": odid })
+    })
+        .then(response => {
+            if (!response) return;
+            if (!response.ok) {
+                showConnectionError();
             }
-            else{
-                showTradeFailureNotification(`Order deletion failed`, 10000);
-            }
+            return response.json();
+        })
+        .then(result => {
+            if (result) setTimeout(del_conf, 200, result.status, odid);
+        });
+}
+
+function del_conf(status, odid) {
+    if (status === "ok") {
+        showTradeNotification(`Order #${odid} deleted!`, 10000);
+    }
+    else {
+        showTradeFailureNotification(`Order deletion failed`, 10000);
+    }
 }
 
 // tells if active tab is buy or sell
@@ -999,42 +1119,46 @@ function orderDetails() {
             "order_price": Number(order_price.value),
             "limit_value": Number(limit_value.value),
             "stop_value": Number(stop_value.value),
-            "status": "inactive",
+            "status": "active",
             "symbol": curr_order_symbol,
             "date": today_date,
             "time": curr_time
         }
-        fetch('http://127.0.0.1:8000/order', {
+        fetchWithAuth('http://127.0.0.1:8000/order', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(order_data)
         })
-            .then(response => {if (!response.ok) {
-      showConnectionError();
-    }
-    return response.json();
-  })
-            .then(result =>  setTimeout(confirmOrder, 200, result.status));
+            .then(response => {
+                if (!response) return;
+                if (!response.ok) {
+                    showConnectionError();
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result) setTimeout(confirmOrder, 200, result.status);
+            });
     }
 }
 
 function confirmOrder(status) {
-            hideOrderModal();
-            box.innerHTML = temphtml;
-            if (status === "ok") {
-                console.log("ou");
-                showTradeNotification("Order placed!", 10000);
-            }
-            else{
-                showTradeFailureNotification("Order failed to execute", 10000);
-            }
-        }
+    hideOrderModal();
+    box.innerHTML = temphtml;
+    if (status === "ok") {
+        console.log("ou");
+        showTradeNotification("Order placed!", 10000);
+    }
+    else {
+        showTradeFailureNotification("Order failed to execute", 10000);
+    }
+}
 
 function renderTradingViewChart(symbol) {
-  const container = document.getElementById("chart-container");
+    const container = document.getElementById("chart-container");
 
-  // Clear previous widget
-  container.innerHTML = `
+    // Clear previous widget
+    container.innerHTML = `
     <div class="tradingview-widget-container" style="height:100%;width:100%;border-radius:25px;">
       <div id="tv-chart" class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%;border-radius:25px;"></div>
       <div class="tradingview-widget-copyright">
@@ -1045,146 +1169,146 @@ function renderTradingViewChart(symbol) {
     </div>
   `;
 
-  const config = {
-    autosize: true,
-    symbol: symbol,
-    interval: "60",
-    timezone: "Asia/Kolkata",
-    theme: "dark",
-    style: "1",
-    locale: "en",
-    hide_legend: true,
-    withdateranges: true,
-    allow_symbol_change: false,
-    save_image: false,
-    hide_volume: true,
-    container_id: "tv-chart",
-    support_host: "https://www.tradingview.com"
-  };
+    const config = {
+        autosize: true,
+        symbol: symbol,
+        interval: "60",
+        timezone: "Asia/Kolkata",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        hide_legend: true,
+        withdateranges: true,
+        allow_symbol_change: false,
+        save_image: false,
+        hide_volume: true,
+        container_id: "tv-chart",
+        support_host: "https://www.tradingview.com"
+    };
 
-  const script = document.createElement("script");
-  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-  script.type = "text/javascript";
-  script.innerHTML = JSON.stringify(config);
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+    script.type = "text/javascript";
+    script.innerHTML = JSON.stringify(config);
 
-  container.querySelector(".tradingview-widget-container").appendChild(script);
+    container.querySelector(".tradingview-widget-container").appendChild(script);
 }
 
 renderTradingViewChart("BINANCE:BTCUSD");
 
 function showTradeNotification(message, duration) {
-            if (!duration) {
-                duration = 4000;
-            }
+    if (!duration) {
+        duration = 4000;
+    }
 
-            let container = document.getElementById('tsNotificationContainer');
+    let container = document.getElementById('tsNotificationContainer');
 
-            let notification = document.createElement('div');
-            notification.className = 'ts__notification__card__j48s';
+    let notification = document.createElement('div');
+    notification.className = 'ts__notification__card__j48s';
 
-            let icon = document.createElement('div');
-            icon.className = 'ts__notification__icon__p54w';
-            icon.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    let icon = document.createElement('div');
+    icon.className = 'ts__notification__icon__p54w';
+    icon.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
-            let content = document.createElement('div');
-            content.className = 'ts__notification__content__r67t';
-            content.textContent = message;
+    let content = document.createElement('div');
+    content.className = 'ts__notification__content__r67t';
+    content.textContent = message;
 
-            let progress = document.createElement('div');
-            progress.className = 'ts__notification__progress__k91v';
-            progress.style.width = '100%';
+    let progress = document.createElement('div');
+    progress.className = 'ts__notification__progress__k91v';
+    progress.style.width = '100%';
 
-            notification.appendChild(icon);
-            notification.appendChild(content);
-            notification.appendChild(progress);
-            container.appendChild(notification);
+    notification.appendChild(icon);
+    notification.appendChild(content);
+    notification.appendChild(progress);
+    container.appendChild(notification);
 
-            setTimeout(function() {
-                notification.classList.add('ts__notification__show__m73p');
-            }, 10);
+    setTimeout(function () {
+        notification.classList.add('ts__notification__show__m73p');
+    }, 10);
 
-            setTimeout(function() {
-                progress.style.transition = 'width ' + duration + 'ms linear';
-                progress.style.width = '0%';
-            }, 50);
+    setTimeout(function () {
+        progress.style.transition = 'width ' + duration + 'ms linear';
+        progress.style.width = '0%';
+    }, 50);
 
-            setTimeout(function() {
-                notification.classList.remove('ts__notification__show__m73p');
-                notification.classList.add('ts__notification__hide__n82q');
+    setTimeout(function () {
+        notification.classList.remove('ts__notification__show__m73p');
+        notification.classList.add('ts__notification__hide__n82q');
 
-                setTimeout(function() {
-                    notification.remove();
-                }, 400);
-            }, duration);
-        }
+        setTimeout(function () {
+            notification.remove();
+        }, 400);
+    }, duration);
+}
 
-        function showOrderSuccess() {
-            showTradeNotification('Buy order placed successfully!', 4000);
-        }
+function showOrderSuccess() {
+    showTradeNotification('Buy order placed successfully!', 4000);
+}
 
-        function showTradeComplete() {
-            showTradeNotification('Trade executed at $91,574.26', 3500);
-        }
+function showTradeComplete() {
+    showTradeNotification('Trade executed at $91,574.26', 3500);
+}
 
-        function showDepositSuccess() {
-            showTradeNotification('Deposit confirmed - funds available', 4500);
-        }
+function showDepositSuccess() {
+    showTradeNotification('Deposit confirmed - funds available', 4500);
+}
 
 
-        function showTradeFailureNotification(message, duration) {
-            if (!duration) {
-                duration = 4000;
-            }
+function showTradeFailureNotification(message, duration) {
+    if (!duration) {
+        duration = 4000;
+    }
 
-            let container = document.getElementById('tsNotificationContainer');
+    let container = document.getElementById('tsNotificationContainer');
 
-            let notification = document.createElement('div');
-            notification.className = 'ts__notification__card__j48s';
+    let notification = document.createElement('div');
+    notification.className = 'ts__notification__card__j48s';
 
-            let icon = document.createElement('div');
-            icon.className = 'ts__notification__icon__error__q29x';
-            icon.innerHTML = '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    let icon = document.createElement('div');
+    icon.className = 'ts__notification__icon__error__q29x';
+    icon.innerHTML = '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
 
-            let content = document.createElement('div');
-            content.className = 'ts__notification__content__r67t';
-            content.textContent = message;
+    let content = document.createElement('div');
+    content.className = 'ts__notification__content__r67t';
+    content.textContent = message;
 
-            let progress = document.createElement('div');
-            progress.className = 'ts__notification__progress__error__v45h';
-            progress.style.width = '100%';
+    let progress = document.createElement('div');
+    progress.className = 'ts__notification__progress__error__v45h';
+    progress.style.width = '100%';
 
-            notification.appendChild(icon);
-            notification.appendChild(content);
-            notification.appendChild(progress);
-            container.appendChild(notification);
+    notification.appendChild(icon);
+    notification.appendChild(content);
+    notification.appendChild(progress);
+    container.appendChild(notification);
 
-            setTimeout(function() {
-                notification.classList.add('ts__notification__show__m73p');
-            }, 10);
+    setTimeout(function () {
+        notification.classList.add('ts__notification__show__m73p');
+    }, 10);
 
-            setTimeout(function() {
-                progress.style.transition = 'width ' + duration + 'ms linear';
-                progress.style.width = '0%';
-            }, 50);
+    setTimeout(function () {
+        progress.style.transition = 'width ' + duration + 'ms linear';
+        progress.style.width = '0%';
+    }, 50);
 
-            setTimeout(function() {
-                notification.classList.remove('ts__notification__show__m73p');
-                notification.classList.add('ts__notification__hide__n82q');
+    setTimeout(function () {
+        notification.classList.remove('ts__notification__show__m73p');
+        notification.classList.add('ts__notification__hide__n82q');
 
-                setTimeout(function() {
-                    notification.remove();
-                }, 400);
-            }, duration);
-        }
+        setTimeout(function () {
+            notification.remove();
+        }, 400);
+    }, duration);
+}
 
-        function showOrderFailure() {
-            showTradeFailureNotification('Order failed - Insufficient funds', 4000);
-        }
+function showOrderFailure() {
+    showTradeFailureNotification('Order failed - Insufficient funds', 4000);
+}
 
-        function showConnectionError() {
-            showTradeFailureNotification('Connection lost - Please retry', 3500);
-        }
+function showConnectionError() {
+    showTradeFailureNotification('Connection lost - Please retry', 3500);
+}
 
-        function showWithdrawalError() {
-            showTradeFailureNotification('Withdrawal failed - Invalid address', 4500);
-        }
+function showWithdrawalError() {
+    showTradeFailureNotification('Withdrawal failed - Invalid address', 4500);
+}
