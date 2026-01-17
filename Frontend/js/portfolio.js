@@ -250,6 +250,35 @@ function renderHoldings() {
         const val = amount * currentPrice;
         totalHoldingsVal += val;
 
+        // Calculate average cost for this symbol
+        const symbolTrades = window.portfolioData.trades.filter(t => t.symbol.includes(symbol));
+        let totalCost = 0;
+        let totalQty = 0;
+        let side = 'Buy'; // Default
+
+        symbolTrades.forEach(t => {
+            if (t.side === 'Buy') {
+                totalCost += (t.quantity * t.price);
+                totalQty += t.quantity;
+                side = 'Buy';
+            } else if (t.side === 'Sell' && totalQty === 0) {
+                // Potential short position entry
+                totalCost += (t.quantity * t.price);
+                totalQty += t.quantity;
+                side = 'Sell';
+            }
+        });
+
+        const avgPrice = totalQty > 0 ? totalCost / totalQty : 0;
+        let roi = 0;
+        if (avgPrice > 0) {
+            if (side === 'Buy') {
+                roi = ((currentPrice - avgPrice) / avgPrice) * 100;
+            } else {
+                roi = ((avgPrice - currentPrice) / avgPrice) * 100;
+            }
+        }
+
         const prof = window.profile[priceKey] || { name: symbol, logo: "" };
 
         list.insertAdjacentHTML('beforeend', `
@@ -260,12 +289,15 @@ function renderHoldings() {
                     </div>
                     <div class="stock-details">
                         <h4>${prof.name}</h4>
-                        <p>${symbol} • ${amount.toFixed(2)} units</p>
+                        <p>${symbol} • ${amount.toFixed(4)} units</p>
+                        <p style="font-size: 0.8em; color: ${roi >= 0 ? '#00ff88' : '#ff4757'}">
+                            Avg: $${avgPrice.toLocaleString()} • ROI: ${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%
+                        </p>
                     </div>
                 </div>
                 <div class="stock-price">
                     <div class="price">$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    <div class="change" style="color: #888;">@ $${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div class="change" style="color: #888;">Live: $${currentPrice.toLocaleString()}</div>
                 </div>
             </div>
         `);
