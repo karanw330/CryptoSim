@@ -460,14 +460,17 @@ async function syncDashboard() {
 
             holdings.forEach(item => {
                 const symbol = item.item_id;
-                const amount = item.amount;
+                const amount = item.amount || 0;
+                const lockedTokens = item.locked_tokens || 0;
+                const totalUnits = amount + lockedTokens;
+
                 const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol.toLowerCase());
                 const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
-                const val = amount * currentPrice;
+                const val = totalUnits * currentPrice;
                 totalHoldingsValue += val;
 
                 if (holdingsList) {
-                    // Calculate average cost for this symbol
+                    // Calculate average cost for this symbol (based on available + locked)
                     const symbolTrades = allTrades.filter(t => t.symbol.includes(symbol));
                     let totalCost = 0;
                     let totalQty = 0;
@@ -489,7 +492,7 @@ async function syncDashboard() {
                                 <div class="stock-icon" style="background: rgba(255,255,255,0.1);"><img src="${logo}" width="100%" height="100%" style="border-radius:50%"></div>
                                 <div class="stock-details">
                                     <h4>${coinName}</h4>
-                                    <p>${symbol} • ${amount.toFixed(4)} units</p>
+                                    <p>${symbol} • ${totalUnits.toFixed(4)} units ${lockedTokens > 0 ? `(${lockedTokens.toFixed(4)} locked)` : ''}</p>
                                     <p style="font-size: 0.8em; color: ${roi >= 0 ? '#00ff88' : '#ff4757'}">
                                         Avg: $${avgPrice.toLocaleString()} • ROI: ${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%
                                     </p>
@@ -505,13 +508,14 @@ async function syncDashboard() {
             });
 
             // Update Total Stats
-            const totalValue = userBalance + totalHoldingsValue;
+            const lockedUsd = userData.locked_usd || 0;
+            const totalEquity = userBalance + lockedUsd + totalHoldingsValue;
             const initialBalance = 100000;
-            const totalProfit = totalValue - initialBalance;
+            const totalProfit = totalEquity - initialBalance;
             const profitPerc = (totalProfit / initialBalance) * 100;
 
             if (document.getElementById('dashboard_total_value')) {
-                document.getElementById('dashboard_total_value').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('dashboard_total_value').textContent = `$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             }
             if (document.getElementById('dashboard_total_perc_change')) {
                 document.getElementById('dashboard_total_perc_change').textContent = `${profitPerc >= 0 ? '+' : ''}${profitPerc.toFixed(2)}%`;
@@ -527,7 +531,7 @@ async function syncDashboard() {
                 document.getElementById('portfolio_value').textContent = `$${totalHoldingsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             }
             if (document.getElementById('total_equity')) {
-                document.getElementById('total_equity').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('total_equity').textContent = `$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             }
             if (document.getElementById('day_pnl')) {
                 document.getElementById('day_pnl').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
