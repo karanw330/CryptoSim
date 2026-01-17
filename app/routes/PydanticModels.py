@@ -5,7 +5,7 @@ class OrderData(BaseModel):
     order_id: int | None
     entry_price: float
     order_type: str
-    order_quantity: int
+    order_quantity: float
     order_price: float
     limit_value: float | None
     stop_value: float | None

@@ -67,6 +67,14 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
             new_amt = port['amount'] - data.order_quantity
             cursor.execute('UPDATE portfolio SET amount = ? WHERE user_id = ? AND symbol = ?',
                            (new_amt, user_id, data.symbol))
+            if data.order_type == "market":
+                virtual_price = data.entry_price
+            elif data.order_type == "stop-loss":
+                virtual_price = data.stop_value
+                cursor.execute('UPDATE portfolio SET locked_tokens = locked_tokens + ? WHERE user_id = ? AND symbol = ?',(data.order_quantity, user_id, data.symbol))
+            else:
+                virtual_price = data.limit_value
+                cursor.execute('UPDATE portfolio SET locked_tokens = locked_tokens + ? WHERE user_id = ? AND symbol = ?',(data.order_quantity, user_id, data.symbol))
 
 
         # 2. Insert into DB
@@ -89,15 +97,15 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
         # We attach the real DB ID to the object so matching engine uses it
         data.order_id = order_id
         data.user_id = user_id
-        
-        func = funcDict[data.order_type]
+
         print(f"Order {order_id} placed: {data}")
         
         if data.order_type == "market":
             pass
         else:
+            func = funcDict[data.order_type]
             await func(data)
-            
+        print(f"Order {order_id} placed: {data}")
         return {"status": "ok", "order_id": order_id}
     except Exception as e:
         print("Error:", e)
@@ -128,8 +136,8 @@ async def delorder(data: Del, current_user: User = Depends(get_current_user)):
                            (order['price'], current_user.username))
         else:
             # Refund Asset
-            cursor.execute("UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?",
-                         (order['quantity'], current_user.username, order['symbol']))
+            cursor.execute("UPDATE portfolio SET amount = amount + ?,locked_tokens = locked_tokens - ? WHERE user_id = ? AND symbol = ?",
+                         (order['quantity'], order['quantity'], current_user.username, order['symbol']))
 
         conn.commit()
         conn.close()
@@ -160,8 +168,8 @@ async def updateorder(data: OrderUpdate, current_user: User = Depends(get_curren
             cursor.execute("UPDATE users SET locked_usd = locked_usd - ? WHERE username = ?",
                          (old['price'], current_user.username))
         else:
-            cursor.execute("UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?", 
-                         (old['quantity'], current_user.username, old['symbol']))
+            cursor.execute("UPDATE portfolio SET amount = amount + ?, locked_tokens = locked_tokens - ? WHERE user_id = ? AND symbol = ?",
+                         (old['quantity'], old['quantity'], current_user.username, old['symbol']))
         
         conn.commit()
         conn.close()
