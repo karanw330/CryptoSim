@@ -39,8 +39,8 @@ async def execute_trade_db(order_id, symbol, price, quantity, side, user_id, ent
             
     elif side == "Sell":
         # Seller gets USD (Coin already deducted on order placement)
-        c.execute('UPDATE users SET balance_usd = balance_usd + ? WHERE username = ?', 
-                  (price, user_id))
+        c.execute('UPDATE users SET balance_usd = balance_usd + ? WHERE username = ?', (price, user_id))
+        c.execute('UPDATE portfolio SET locked_tokens = locked_tokens - ? WHERE username = ?', (quantity, user_id))
         
     # 4. Fetch and Push updated balance
     user_row = c.execute('SELECT balance_usd FROM users WHERE username = ?', (user_id,)).fetchone()

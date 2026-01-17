@@ -216,7 +216,7 @@ function createActiveOrderCard(order) {
     const order_time = timestamp.split(' ')[1] || "";
     const order_price = (order.order_price || order.price || 0).toLocaleString('en-US');
     const order_quantity = order.order_quantity || order.quantity || 0;
-    const entry_price = order.entry_price || order.price || 0;
+    const entry_price = order.entry_price || order.entry || 0;
     const new_entry_price = entry_price.toLocaleString('en-US');
     const calc_new_entry_price = Number(entry_price);
     console.log(order);
