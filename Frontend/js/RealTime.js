@@ -198,13 +198,7 @@ first_socket.onmessage = function (event) {
         }
     });
 
-    // Debounce or conditional refresh for dashboard stats to avoid over-rendering
-    if (document.getElementById('dashboard_holdings_list')) {
-        if (!window._last_sync || Date.now() - window._last_sync > 2000) {
-            syncDashboard();
-            window._last_sync = Date.now();
-        }
-    }
+    // Removal of high-frequency syncDashboard call as per user request (switched to interval)
 };
 
 first_socket.onclose = function (event) {
@@ -542,7 +536,11 @@ async function syncDashboard() {
     }
 }
 
-window.addEventListener('load', syncDashboard);
+window.addEventListener('load', () => {
+    syncDashboard();
+    // Re-sync every 5 minutes (300,000 ms) instead of on every price tick
+    setInterval(syncDashboard, 300000);
+});
 
 const symbolMap = {
     "BTC - Bitcoin": { chart: "BINANCE:BTCUSD", symbol: "BINANCE:BTCUSDT", var: "btc" },
