@@ -183,11 +183,18 @@ first_socket.onmessage = function (event) {
     const orderCards = document.querySelectorAll(`.order-price-change[data-symbol="${stocks_data.symbol}"]`);
     orderCards.forEach(card => {
         const entryPrice = parseFloat(card.getAttribute('data-entry'));
+        const side = card.getAttribute('data-side') || 'Buy';
         const livePrice = profile[stocks_data.symbol].price;
         if (entryPrice && livePrice) {
-            const perc = (((livePrice - entryPrice) / entryPrice) * 100).toFixed(2);
-            card.textContent = (perc >= 0 ? '+' : '') + perc + '%';
-            card.style.color = perc >= 0 ? '#00ff88' : '#ff4757';
+            let perc = 0;
+            if (side === 'Buy') {
+                perc = ((livePrice - entryPrice) / entryPrice) * 100;
+            } else {
+                perc = ((entryPrice - livePrice) / entryPrice) * 100;
+            }
+            const percFixed = perc.toFixed(2);
+            card.textContent = (percFixed >= 0 ? '+' : '') + percFixed + '%';
+            card.style.color = percFixed >= 0 ? '#00ff88' : '#ff4757';
         }
     });
 
@@ -233,8 +240,15 @@ function createActiveOrderCard(order) {
                         <p class="order-value trade-order-type" data-type="${order_buy_sell.trim()}">${order_buy_sell}</p>
                     </div>
                 </div>
-                <div class="order-price-change" id="order-${order_id}_order_change" data-symbol="${order_symbol}" data-entry="${calc_new_entry_price}">
-                    ${profile[order_symbol].price ? (((Number(profile[order_symbol].price) - calc_new_entry_price) / Number(calc_new_entry_price)) * 100).toFixed(2) : 0}%
+                <div class="order-price-change" id="order-${order_id}_order_change" 
+                     data-side="${order_buy_sell}" 
+                     data-symbol="${order_symbol}" 
+                     data-entry="${calc_new_entry_price}">
+                    ${profile[order_symbol].price ? (
+            order_buy_sell === 'Buy'
+                ? (((Number(profile[order_symbol].price) - calc_new_entry_price) / Number(calc_new_entry_price)) * 100).toFixed(2)
+                : (((calc_new_entry_price - Number(profile[order_symbol].price)) / Number(calc_new_entry_price)) * 100).toFixed(2)
+        ) : 0}%
                 </div>
             </div>
 
