@@ -74,9 +74,34 @@ function clearFields() {
     volume_placeholder.innerHTML = '';
     logo_placeholder.setAttribute("src", '');
     fname_placeholder.innerHTML = '';
-    open_placeholder.innerHML = '';
+    open_placeholder.innerHTML = '';
     high_placeholder.innerHTML = '';
     low_placeholder.innerHTML = '';
+}
+
+function updateMarketDisplay(stocks_data, profileInfo) {
+    curr_price = stocks_data.last_price;
+    symbol_placeholder.innerHTML = profileInfo.live_fname;
+    price_placeholder.innerHTML = '$' + Number(curr_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    volume_placeholder.innerHTML = Number(stocks_data.volume).toLocaleString('en-US');
+    logo_placeholder.setAttribute("src", profileInfo.logo_src);
+    fname_placeholder.innerHTML = stocks_data.symbol;
+    open_placeholder.innerHTML = '$' + Number(stocks_data.openprice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    high_placeholder.innerHTML = '$' + Number(stocks_data.high).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    low_placeholder.innerHTML = '$' + Number(stocks_data.low).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const changeEl = document.getElementById("change");
+    if (stocks_data.abs_change > 0) {
+        changeEl.innerHTML = '+' + stocks_data.abs_change + ' (+' + stocks_data.perc_change + '%)';
+        changeEl.className = "change-positive";
+        changeEl.style.color = "#00ff88";
+        changeEl.style.background = 'rgba(0, 255, 136, 0.1)';
+    } else {
+        changeEl.innerHTML = stocks_data.abs_change + ' (' + stocks_data.perc_change + '%)';
+        changeEl.className = "change-negative";
+        changeEl.style.color = "#ff4757";
+        changeEl.style.background = 'rgba(255, 71, 87, 0.1)';
+    }
 }
 
 let live_symbol = "";
@@ -133,6 +158,7 @@ first_socket.onmessage = function (event) {
     live_fname = profile[stocks_data.symbol].live_fname;
     logo_src = profile[stocks_data.symbol].logo_src;
     profile[stocks_data.symbol].price = Number(stocks_data.last_price);
+    profile[stocks_data.symbol].entire = stocks_data; // Cache entire payload
 
     if (stocks_data.symbol === 'BINANCE:BTCUSDT') {
         if (curr_price_var === 'btc') { curr_price = profile["BINANCE:BTCUSDT"].price; }
@@ -155,28 +181,7 @@ first_socket.onmessage = function (event) {
 
     window.symbol = stocks_data.symbol;
     if (symbol === selected) {
-        curr_price = stocks_data.last_price;
-        symbol_placeholder.innerHTML = live_fname;
-        price_placeholder.innerHTML = '$' + curr_price.toLocaleString('en-US');
-        volume_placeholder.innerHTML = stocks_data.volume;
-        logo_placeholder.setAttribute("src", logo_src);
-        fname_placeholder.innerHTML = stocks_data.symbol;
-        open_placeholder.innerHTML = '$' + stocks_data.openprice.toLocaleString('en-US');
-        high_placeholder.innerHTML = '$' + stocks_data.high.toLocaleString('en-US');
-        low_placeholder.innerHTML = '$' + stocks_data.low.toLocaleString('en-US');
-
-        if (stocks_data.abs_change > 0) {
-            document.getElementById("change").innerHTML = '+' + stocks_data.abs_change + ' (+' + stocks_data.perc_change + '%)';
-            change.className = "change-positive";
-            change.style.color = "#00ff88";
-            change.style.background = 'rgba(0, 255, 136, 0.1)';
-        }
-        else {
-            document.getElementById("change").innerHTML = stocks_data.abs_change + ' (' + stocks_data.perc_change + '%)';
-            change.className = "change-negative";
-            change.style.color = "#ff4757";
-            change.style.background = 'rgba(255, 71, 87, 0.1)';
-        }
+        updateMarketDisplay(stocks_data, profile[stocks_data.symbol]);
     }
 
     // Update active order cards for this symbol
@@ -707,7 +712,14 @@ class FinancialSelector {
         if (config) {
             clearFields();
             clearOrderFields();
-            order_type.value = "Market";
+
+            // Instant UI Update from Cache
+            const cachedData = profile[config.symbol] ? profile[config.symbol].entire : null;
+            if (cachedData) {
+                updateMarketDisplay(cachedData, profile[config.symbol]);
+            }
+
+            order_type.value = "market";
             renderTradingViewChart(config.chart);
             window.selected = config.symbol;
             window.curr_price_var = config.var;
