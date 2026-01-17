@@ -385,9 +385,11 @@ async function syncDashboard() {
         // 1. Fetch User Profile (Balance)
         const userRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/');
         let userBalance = 0;
+        let lockedUsd = 0;
         if (userRes && userRes.ok) {
             const userData = await userRes.json();
             userBalance = userData.balance_usd;
+            lockedUsd = userData.locked_usd || 0;
 
             // Update Home dashboard elements
             if (document.getElementById('cash_available')) {
@@ -508,7 +510,6 @@ async function syncDashboard() {
             });
 
             // Update Total Stats
-            const lockedUsd = userData.locked_usd || 0;
             const totalEquity = userBalance + lockedUsd + totalHoldingsValue;
             const initialBalance = 100000;
             const totalProfit = totalEquity - initialBalance;
