@@ -46,6 +46,12 @@ async function fetchWithAuth(url, options = {}) {
     };
     return fetch(url, options);
 }
+
+window.logout = function () {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.replace('./login_page.html');
+};
 window.curr_price_var = 'btc';
 const order_panel = document.getElementById("order_panel");
 let curr_price = Number("");
@@ -126,7 +132,7 @@ first_socket.onmessage = function (event) {
     live_symbol = profile[stocks_data.symbol].live_symbol;
     live_fname = profile[stocks_data.symbol].live_fname;
     logo_src = profile[stocks_data.symbol].logo_src;
-    profile[stocks_data.symbol].price = Number(stocks_data.price);
+    profile[stocks_data.symbol].price = Number(stocks_data.last_price);
 
     if (stocks_data.symbol === 'BINANCE:BTCUSDT') {
         if (curr_price_var === 'btc') { curr_price = profile["BINANCE:BTCUSDT"].price; }
@@ -159,7 +165,7 @@ first_socket.onmessage = function (event) {
         high_placeholder.innerHTML = '$' + stocks_data.high.toLocaleString('en-US');
         low_placeholder.innerHTML = '$' + stocks_data.low.toLocaleString('en-US');
 
-        if (stocks_data.abs > 0) {
+        if (stocks_data.abs_change > 0) {
             document.getElementById("change").innerHTML = '+' + stocks_data.abs_change + ' (+' + stocks_data.perc_change + '%)';
             change.className = "change-positive";
             change.style.color = "#00ff88";
@@ -210,7 +216,7 @@ function createActiveOrderCard(order) {
     const order_time = timestamp.split(' ')[1] || "";
     const order_price = (order.order_price || order.price || 0).toLocaleString('en-US');
     const order_quantity = order.order_quantity || order.quantity || 0;
-    const entry_price = order.entry_price || order.price || 0;
+    const entry_price = order.entry_price || order.entry || 0;
     const new_entry_price = entry_price.toLocaleString('en-US');
     const calc_new_entry_price = Number(entry_price);
     console.log(order);
@@ -401,28 +407,35 @@ async function syncDashboard() {
             const orders = await orderRes.json();
             if (inactive_span) {
                 inactive_span.innerHTML = '';
-                orders.forEach(order => {
-                    // Pending orders go to Pending section
-                    if (order.status === 'active' || order.status === 'inactive') {
+                const pendingOrders = orders.filter(o => o.status === 'active' || o.status === 'inactive');
+                if (pendingOrders.length === 0) {
+                    inactive_span.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No pending orders</div>';
+                } else {
+                    pendingOrders.forEach(order => {
                         inactive_span.insertAdjacentHTML("afterbegin", createInactiveOrderCard(order));
-                    }
-                });
+                    });
+                }
             }
         }
 
         // 3. Fetch Past Trades
         const tradeRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/trades');
+        let allTrades = [];
         if (tradeRes && tradeRes.ok) {
-            const trades = await tradeRes.json();
+            allTrades = await tradeRes.json();
             if (last) {
                 last.innerHTML = '';
-                trades.forEach(trade => {
-                    last.insertAdjacentHTML("afterbegin", createActiveOrderCard(trade));
-                });
+                if (allTrades.length === 0) {
+                    last.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No past trades</div>';
+                } else {
+                    allTrades.forEach(trade => {
+                        last.insertAdjacentHTML("afterbegin", createActiveOrderCard(trade));
+                    });
+                }
             }
         }
 
-        // 3. Fetch Portfolio (Holdings)
+        // 4. Fetch Portfolio (Holdings) & Calculate ROI
         const portfolioRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/items/');
         if (portfolioRes && portfolioRes.ok) {
             const holdings = await portfolioRes.json();
@@ -431,6 +444,10 @@ async function syncDashboard() {
                 holdingsList.innerHTML = '';
                 let totalHoldingsValue = 0;
 
+                if (holdings.length === 0) {
+                    holdingsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No holdings yet</div>';
+                }
+
                 holdings.forEach(item => {
                     const symbol = item.item_id;
                     const amount = item.amount;
@@ -438,6 +455,19 @@ async function syncDashboard() {
                     const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
                     const val = amount * currentPrice;
                     totalHoldingsValue += val;
+
+                    // Calculate average cost for this symbol
+                    const symbolTrades = allTrades.filter(t => t.symbol.includes(symbol));
+                    let totalCost = 0;
+                    let totalQty = 0;
+                    symbolTrades.forEach(t => {
+                        if (t.side === 'Buy') {
+                            totalCost += (t.quantity * t.price);
+                            totalQty += t.quantity;
+                        }
+                    });
+                    const avgPrice = totalQty > 0 ? totalCost / totalQty : 0;
+                    const roi = avgPrice > 0 ? ((currentPrice - avgPrice) / avgPrice) * 100 : 0;
 
                     const coinName = priceInfo ? priceInfo.live_fname : symbol;
                     const logo = priceInfo ? priceInfo.logo_src : "";
@@ -449,11 +479,14 @@ async function syncDashboard() {
                                 <div class="stock-details">
                                     <h4>${coinName}</h4>
                                     <p>${symbol} • ${amount.toFixed(4)} units</p>
+                                    <p style="font-size: 0.8em; color: ${roi >= 0 ? '#00ff88' : '#ff4757'}">
+                                        Avg: $${avgPrice.toLocaleString()} • ROI: ${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%
+                                    </p>
                                 </div>
                             </div>
                             <div class="stock-price">
                                 <div class="price">$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                <div class="change" style="color: #888;">@ $${currentPrice.toLocaleString()}</div>
+                                <div class="change" style="color: #888;">Live: $${currentPrice.toLocaleString()}</div>
                             </div>
                         </div>
                     `);
@@ -708,11 +741,13 @@ const StockMarketHeader = {
         if (userMenu) {
             userMenu.addEventListener('click', function () {
                 window.dispatchEvent(new CustomEvent('stockUserMenuClick'));
+                window.logout(); // Simple click to logout for now
             });
 
             userMenu.addEventListener('keypress', function (e) {
                 if (e.key === 'Enter' || e.key === ' ') {
                     window.dispatchEvent(new CustomEvent('stockUserMenuClick'));
+                    window.logout();
                 }
             });
         }
@@ -1032,14 +1067,18 @@ function update() {
     let trx_aggregate = document.getElementById("trxAggregateSum");
     console.log(typeof trx_aggregate);
     const in_box = document.getElementById("inner-modify");
+    const confirmBtn = document.querySelector('.trx-execute-control');
+    const originalText = confirmBtn.innerText;
+
+    confirmBtn.disabled = true;
+    confirmBtn.innerText = "Updating...";
+
     temphtml = in_box.innerHTML;
-    in_box.innerHTML = loadingSVG;
-    in_box.innerHTML = loadingSVG;
     fetchWithAuth('http://127.0.0.1:8000/updateorder', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            "order_id": Number(localStorage.getItem('current_mod_id')), // We need to store this earlier
+            "order_id": Number(localStorage.getItem('current_mod_id')),
             "order_type": trx_type,
             "order_quantity": trx_quan,
             "limit_value": trx_limval,
@@ -1048,15 +1087,25 @@ function update() {
         })
     })
         .then(response => {
-            if (!response) return; // handles redirect
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = originalText;
+            if (!response) return;
             if (!response.ok) {
-                showConnectionError();
+                return response.json().then(err => {
+                    showTradeFailureNotification(err.detail || "Update failed", 5000);
+                    throw new Error(err.detail);
+                });
             }
             return response.json();
         })
         .then(result => {
-            if (result) setTimeout(update_conf, 200, temphtml, result.status, { "order_type": trx_type, "order_quantity": trx_quan, "order_limit": trx_limval, "order_stop": trx_stopval, "order_price": trx_aggregate });
-        });
+            if (result) {
+                showTradeNotification("Order updated successfully", 5000);
+                dismissAlterationPanel();
+                syncDashboard();
+            }
+        })
+        .catch(e => console.error("Update error", e));
 }
 
 function update_conf(temp, status, obj) {
@@ -1074,26 +1123,40 @@ function update_conf(temp, status, obj) {
 
 function delete_order(button_id) {
     const odid = button_id.replace("DEL", "");
+    const btn = document.getElementById(button_id);
+    const originalText = btn.innerText;
+
+    btn.disabled = true;
+    btn.innerText = "Closing...";
+
     console.log("Deleting order ID:", odid);
     const element = document.getElementById(`ODID${odid}`);
-    if (element) {
-        element.innerHTML = "";
-    }
+
     fetchWithAuth('http://127.0.0.1:8000/delorder', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ "order_id": odid })
     })
         .then(response => {
+            btn.disabled = false;
+            btn.innerText = originalText;
             if (!response) return;
             if (!response.ok) {
-                showConnectionError();
+                return response.json().then(err => {
+                    showTradeFailureNotification(err.detail || "Deletion failed", 5000);
+                    throw new Error(err.detail);
+                });
             }
             return response.json();
         })
         .then(result => {
-            if (result) setTimeout(del_conf, 200, result.status, odid);
-        });
+            if (result && result.status === "ok") {
+                showTradeNotification(`Order #${odid} closed!`, 5000);
+                if (element) element.remove();
+                syncDashboard();
+            }
+        })
+        .catch(e => console.error("Delete error", e));
 }
 
 function del_conf(status, odid) {
@@ -1107,11 +1170,14 @@ function del_conf(status, odid) {
 
 // tells if active tab is buy or sell
 function orderDetails() {
-    if (order_quantity != 0 && order_price != 0) {
-        temphtml = box.innerHTML;
-        box.innerHTML = loadingSVG;
+    if (order_quantity.value != 0 && order_price.value != 0) {
+        const confirmBtn = document.querySelector('.confirm-btn');
+        const originalText = confirmBtn.innerText;
+        confirmBtn.disabled = true;
+        confirmBtn.innerText = "Placing Order...";
+
         let order_data = {
-            "order_id": 2,
+            "order_id": 0, // Backend assigns ID
             "order": order,
             "entry_price": curr_price,
             "order_type": order_type.value,
@@ -1130,15 +1196,26 @@ function orderDetails() {
             body: JSON.stringify(order_data)
         })
             .then(response => {
+                confirmBtn.disabled = false;
+                confirmBtn.innerText = originalText;
                 if (!response) return;
                 if (!response.ok) {
-                    showConnectionError();
+                    return response.json().then(err => {
+                        showTradeFailureNotification(err.detail || "Order failed", 5000);
+                        throw new Error(err.detail);
+                    });
                 }
                 return response.json();
             })
             .then(result => {
-                if (result) setTimeout(confirmOrder, 200, result.status);
-            });
+                if (result && result.status === "ok") {
+                    showTradeNotification("Order placed successfully!", 5000);
+                    hideOrderModal();
+                    clearOrderFields();
+                    syncDashboard();
+                }
+            })
+            .catch(e => console.error("Order error", e));
     }
 }
 
