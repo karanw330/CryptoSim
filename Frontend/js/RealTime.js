@@ -448,22 +448,25 @@ async function syncDashboard() {
         if (portfolioRes && portfolioRes.ok) {
             const holdings = await portfolioRes.json();
             const holdingsList = document.getElementById('dashboard_holdings_list');
+
+            let totalHoldingsValue = 0;
             if (holdingsList) {
                 holdingsList.innerHTML = '';
-                let totalHoldingsValue = 0;
+            }
 
-                if (holdings.length === 0) {
-                    holdingsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No holdings yet</div>';
-                }
+            if (holdings.length === 0 && holdingsList) {
+                holdingsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No holdings yet</div>';
+            }
 
-                holdings.forEach(item => {
-                    const symbol = item.item_id;
-                    const amount = item.amount;
-                    const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol.toLowerCase());
-                    const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
-                    const val = amount * currentPrice;
-                    totalHoldingsValue += val;
+            holdings.forEach(item => {
+                const symbol = item.item_id;
+                const amount = item.amount;
+                const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol.toLowerCase());
+                const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
+                const val = amount * currentPrice;
+                totalHoldingsValue += val;
 
+                if (holdingsList) {
                     // Calculate average cost for this symbol
                     const symbolTrades = allTrades.filter(t => t.symbol.includes(symbol));
                     let totalCost = 0;
@@ -498,37 +501,37 @@ async function syncDashboard() {
                             </div>
                         </div>
                     `);
-                });
+                }
+            });
 
-                // Update Total Stats
-                const totalValue = userBalance + totalHoldingsValue;
-                const initialBalance = 100000;
-                const totalProfit = totalValue - initialBalance;
-                const profitPerc = (totalProfit / initialBalance) * 100;
+            // Update Total Stats
+            const totalValue = userBalance + totalHoldingsValue;
+            const initialBalance = 100000;
+            const totalProfit = totalValue - initialBalance;
+            const profitPerc = (totalProfit / initialBalance) * 100;
 
-                if (document.getElementById('dashboard_total_value')) {
-                    document.getElementById('dashboard_total_value').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                }
-                if (document.getElementById('dashboard_total_perc_change')) {
-                    document.getElementById('dashboard_total_perc_change').textContent = `${profitPerc >= 0 ? '+' : ''}${profitPerc.toFixed(2)}%`;
-                    document.getElementById('dashboard_total_perc_change').className = profitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
-                }
-                if (document.getElementById('dashboard_total_profit')) {
-                    document.getElementById('dashboard_total_profit').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    document.getElementById('dashboard_total_profit').className = totalProfit >= 0 ? 'stats-value positive' : 'stats-value negative';
-                }
+            if (document.getElementById('dashboard_total_value')) {
+                document.getElementById('dashboard_total_value').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            if (document.getElementById('dashboard_total_perc_change')) {
+                document.getElementById('dashboard_total_perc_change').textContent = `${profitPerc >= 0 ? '+' : ''}${profitPerc.toFixed(2)}%`;
+                document.getElementById('dashboard_total_perc_change').className = profitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
+            }
+            if (document.getElementById('dashboard_total_profit')) {
+                document.getElementById('dashboard_total_profit').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('dashboard_total_profit').className = totalProfit >= 0 ? 'stats-value positive' : 'stats-value negative';
+            }
 
-                // --- Home Page Specific Metrics ---
-                if (document.getElementById('portfolio_value')) {
-                    document.getElementById('portfolio_value').textContent = `$${totalHoldingsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                }
-                if (document.getElementById('total_equity')) {
-                    document.getElementById('total_equity').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                }
-                if (document.getElementById('day_pnl')) {
-                    document.getElementById('day_pnl').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    document.getElementById('day_pnl').style.color = totalProfit >= 0 ? '#00ff88' : '#ff4757';
-                }
+            // --- Home Page Specific Metrics ---
+            if (document.getElementById('portfolio_value')) {
+                document.getElementById('portfolio_value').textContent = `$${totalHoldingsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            if (document.getElementById('total_equity')) {
+                document.getElementById('total_equity').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            if (document.getElementById('day_pnl')) {
+                document.getElementById('day_pnl').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('day_pnl').style.color = totalProfit >= 0 ? '#00ff88' : '#ff4757';
             }
         }
     } catch (e) {
