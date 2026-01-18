@@ -27,6 +27,7 @@ class User(BaseModel):
     sub: str | None = None
     disabled: bool | None = None
     balance_usd: float | None = None
+    locked_usd: float | None = None
 
 
 class UserInDB(User):
