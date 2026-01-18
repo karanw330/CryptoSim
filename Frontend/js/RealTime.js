@@ -391,10 +391,16 @@ async function syncDashboard() {
         const userRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/');
         let userBalance = 0;
         let lockedUsd = 0;
+
         if (userRes && userRes.ok) {
             const userData = await userRes.json();
             userBalance = userData.balance_usd;
             lockedUsd = userData.locked_usd || 0;
+
+            // Update user menu initials
+            if (document.getElementById('stockUserMenu')) {
+                document.getElementById('stockUserMenu').textContent = userData.username.substring(0, 2).toUpperCase();
+            }
 
             // Update Home dashboard elements
             if (document.getElementById('cash_available')) {
