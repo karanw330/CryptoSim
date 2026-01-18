@@ -74,9 +74,34 @@ function clearFields() {
     volume_placeholder.innerHTML = '';
     logo_placeholder.setAttribute("src", '');
     fname_placeholder.innerHTML = '';
-    open_placeholder.innerHML = '';
+    open_placeholder.innerHTML = '';
     high_placeholder.innerHTML = '';
     low_placeholder.innerHTML = '';
+}
+
+function updateMarketDisplay(stocks_data, profileInfo) {
+    curr_price = stocks_data.last_price;
+    symbol_placeholder.innerHTML = profileInfo.live_fname;
+    price_placeholder.innerHTML = '$' + Number(curr_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    volume_placeholder.innerHTML = Number(stocks_data.volume).toLocaleString('en-US');
+    logo_placeholder.setAttribute("src", profileInfo.logo_src);
+    fname_placeholder.innerHTML = stocks_data.symbol;
+    open_placeholder.innerHTML = '$' + Number(stocks_data.openprice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    high_placeholder.innerHTML = '$' + Number(stocks_data.high).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    low_placeholder.innerHTML = '$' + Number(stocks_data.low).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const changeEl = document.getElementById("change");
+    if (stocks_data.abs_change > 0) {
+        changeEl.innerHTML = '+' + stocks_data.abs_change + ' (+' + stocks_data.perc_change + '%)';
+        changeEl.className = "change-positive";
+        changeEl.style.color = "#00ff88";
+        changeEl.style.background = 'rgba(0, 255, 136, 0.1)';
+    } else {
+        changeEl.innerHTML = stocks_data.abs_change + ' (' + stocks_data.perc_change + '%)';
+        changeEl.className = "change-negative";
+        changeEl.style.color = "#ff4757";
+        changeEl.style.background = 'rgba(255, 71, 87, 0.1)';
+    }
 }
 
 let live_symbol = "";
@@ -133,6 +158,7 @@ first_socket.onmessage = function (event) {
     live_fname = profile[stocks_data.symbol].live_fname;
     logo_src = profile[stocks_data.symbol].logo_src;
     profile[stocks_data.symbol].price = Number(stocks_data.last_price);
+    profile[stocks_data.symbol].entire = stocks_data; // Cache entire payload
 
     if (stocks_data.symbol === 'BINANCE:BTCUSDT') {
         if (curr_price_var === 'btc') { curr_price = profile["BINANCE:BTCUSDT"].price; }
@@ -155,28 +181,7 @@ first_socket.onmessage = function (event) {
 
     window.symbol = stocks_data.symbol;
     if (symbol === selected) {
-        curr_price = stocks_data.last_price;
-        symbol_placeholder.innerHTML = live_fname;
-        price_placeholder.innerHTML = '$' + curr_price.toLocaleString('en-US');
-        volume_placeholder.innerHTML = stocks_data.volume;
-        logo_placeholder.setAttribute("src", logo_src);
-        fname_placeholder.innerHTML = stocks_data.symbol;
-        open_placeholder.innerHTML = '$' + stocks_data.openprice.toLocaleString('en-US');
-        high_placeholder.innerHTML = '$' + stocks_data.high.toLocaleString('en-US');
-        low_placeholder.innerHTML = '$' + stocks_data.low.toLocaleString('en-US');
-
-        if (stocks_data.abs_change > 0) {
-            document.getElementById("change").innerHTML = '+' + stocks_data.abs_change + ' (+' + stocks_data.perc_change + '%)';
-            change.className = "change-positive";
-            change.style.color = "#00ff88";
-            change.style.background = 'rgba(0, 255, 136, 0.1)';
-        }
-        else {
-            document.getElementById("change").innerHTML = stocks_data.abs_change + ' (' + stocks_data.perc_change + '%)';
-            change.className = "change-negative";
-            change.style.color = "#ff4757";
-            change.style.background = 'rgba(255, 71, 87, 0.1)';
-        }
+        updateMarketDisplay(stocks_data, profile[stocks_data.symbol]);
     }
 
     // Update active order cards for this symbol
@@ -198,13 +203,7 @@ first_socket.onmessage = function (event) {
         }
     });
 
-    // Debounce or conditional refresh for dashboard stats to avoid over-rendering
-    if (document.getElementById('dashboard_holdings_list')) {
-        if (!window._last_sync || Date.now() - window._last_sync > 2000) {
-            syncDashboard();
-            window._last_sync = Date.now();
-        }
-    }
+    // Removal of high-frequency syncDashboard call as per user request (switched to interval)
 };
 
 first_socket.onclose = function (event) {
@@ -391,9 +390,11 @@ async function syncDashboard() {
         // 1. Fetch User Profile (Balance)
         const userRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/');
         let userBalance = 0;
+        let lockedUsd = 0;
         if (userRes && userRes.ok) {
             const userData = await userRes.json();
             userBalance = userData.balance_usd;
+            lockedUsd = userData.locked_usd || 0;
 
             // Update Home dashboard elements
             if (document.getElementById('cash_available')) {
@@ -453,24 +454,34 @@ async function syncDashboard() {
         const portfolioRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/items/');
         if (portfolioRes && portfolioRes.ok) {
             const holdings = await portfolioRes.json();
+            console.log("Holdings: ", holdings);
             const holdingsList = document.getElementById('dashboard_holdings_list');
+
+            let totalHoldingsValue = 0;
             if (holdingsList) {
                 holdingsList.innerHTML = '';
-                let totalHoldingsValue = 0;
+            }
 
-                if (holdings.length === 0) {
-                    holdingsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No holdings yet</div>';
-                }
+            if (holdings.length === 0 && holdingsList) {
+                holdingsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No holdings yet</div>';
+            }
 
-                holdings.forEach(item => {
-                    const symbol = item.item_id;
-                    const amount = item.amount;
-                    const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol.toLowerCase());
-                    const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
-                    const val = amount * currentPrice;
-                    totalHoldingsValue += val;
+            holdings.forEach(item => {
+                const symbol = item.item_id;
+                const amount = item.amount || 0;
+                const lockedTokens = item.locked_tokens || 0;
+                const totalUnits = amount + lockedTokens;
 
-                    // Calculate average cost for this symbol
+
+               // const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol);
+
+                // const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
+                const currentPrice = profile[symbol].price;
+                const val = totalUnits * currentPrice;
+                totalHoldingsValue += val;
+
+                if (holdingsList) {
+                    // Calculate average cost for this symbol (based on available + locked)
                     const symbolTrades = allTrades.filter(t => t.symbol.includes(symbol));
                     let totalCost = 0;
                     let totalQty = 0;
@@ -492,7 +503,7 @@ async function syncDashboard() {
                                 <div class="stock-icon" style="background: rgba(255,255,255,0.1);"><img src="${logo}" width="100%" height="100%" style="border-radius:50%"></div>
                                 <div class="stock-details">
                                     <h4>${coinName}</h4>
-                                    <p>${symbol} • ${amount.toFixed(4)} units</p>
+                                    <p>${symbol} • ${totalUnits.toFixed(4)} units ${lockedTokens > 0 ? `(${lockedTokens.toFixed(4)} locked)` : ''}</p>
                                     <p style="font-size: 0.8em; color: ${roi >= 0 ? '#00ff88' : '#ff4757'}">
                                         Avg: $${avgPrice.toLocaleString()} • ROI: ${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%
                                     </p>
@@ -504,37 +515,37 @@ async function syncDashboard() {
                             </div>
                         </div>
                     `);
-                });
+                }
+            });
 
-                // Update Total Stats
-                const totalValue = userBalance + totalHoldingsValue;
-                const initialBalance = 100000;
-                const totalProfit = totalValue - initialBalance;
-                const profitPerc = (totalProfit / initialBalance) * 100;
+            // Update Total Stats
+            const totalEquity = userBalance + lockedUsd + totalHoldingsValue;
+            const initialBalance = 100000;
+            const totalProfit = totalEquity - initialBalance;
+            const profitPerc = (totalProfit / initialBalance) * 100;
 
-                if (document.getElementById('dashboard_total_value')) {
-                    document.getElementById('dashboard_total_value').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                }
-                if (document.getElementById('dashboard_total_perc_change')) {
-                    document.getElementById('dashboard_total_perc_change').textContent = `${profitPerc >= 0 ? '+' : ''}${profitPerc.toFixed(2)}%`;
-                    document.getElementById('dashboard_total_perc_change').className = profitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
-                }
-                if (document.getElementById('dashboard_total_profit')) {
-                    document.getElementById('dashboard_total_profit').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    document.getElementById('dashboard_total_profit').className = totalProfit >= 0 ? 'stats-value positive' : 'stats-value negative';
-                }
+            if (document.getElementById('dashboard_total_value')) {
+                document.getElementById('dashboard_total_value').textContent = `$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            if (document.getElementById('dashboard_total_perc_change')) {
+                document.getElementById('dashboard_total_perc_change').textContent = `${profitPerc >= 0 ? '+' : ''}${profitPerc.toFixed(2)}%`;
+                document.getElementById('dashboard_total_perc_change').className = profitPerc >= 0 ? 'stats-change positive' : 'stats-change negative';
+            }
+            if (document.getElementById('dashboard_total_profit')) {
+                document.getElementById('dashboard_total_profit').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('dashboard_total_profit').className = totalProfit >= 0 ? 'stats-value positive' : 'stats-value negative';
+            }
 
-                // --- Home Page Specific Metrics ---
-                if (document.getElementById('portfolio_value')) {
-                    document.getElementById('portfolio_value').textContent = `$${totalHoldingsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                }
-                if (document.getElementById('total_equity')) {
-                    document.getElementById('total_equity').textContent = `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                }
-                if (document.getElementById('day_pnl')) {
-                    document.getElementById('day_pnl').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    document.getElementById('day_pnl').style.color = totalProfit >= 0 ? '#00ff88' : '#ff4757';
-                }
+            // --- Home Page Specific Metrics ---
+            if (document.getElementById('portfolio_value')) {
+                document.getElementById('portfolio_value').textContent = `$${totalHoldingsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            if (document.getElementById('total_equity')) {
+                document.getElementById('total_equity').textContent = `$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            if (document.getElementById('day_pnl')) {
+                document.getElementById('day_pnl').textContent = `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('day_pnl').style.color = totalProfit >= 0 ? '#00ff88' : '#ff4757';
             }
         }
     } catch (e) {
@@ -542,7 +553,11 @@ async function syncDashboard() {
     }
 }
 
-window.addEventListener('load', syncDashboard);
+window.addEventListener('load', () => {
+    syncDashboard();
+    // Re-sync every 5 minutes (300,000 ms) instead of on every price tick
+    setInterval(syncDashboard, 300000);
+});
 
 const symbolMap = {
     "BTC - Bitcoin": { chart: "BINANCE:BTCUSD", symbol: "BINANCE:BTCUSDT", var: "btc" },
@@ -701,7 +716,14 @@ class FinancialSelector {
         if (config) {
             clearFields();
             clearOrderFields();
-            order_type.value = "Market";
+
+            // Instant UI Update from Cache
+            const cachedData = profile[config.symbol] ? profile[config.symbol].entire : null;
+            if (cachedData) {
+                updateMarketDisplay(cachedData, profile[config.symbol]);
+            }
+
+            order_type.value = "market";
             renderTradingViewChart(config.chart);
             window.selected = config.symbol;
             window.curr_price_var = config.var;

@@ -135,7 +135,7 @@ async def read_own_items(
 ):
     from app.db_init import get_db_connection
     conn = get_db_connection()
-    items = conn.execute('SELECT symbol, amount FROM portfolio WHERE user_id = ?', 
+    items = conn.execute('SELECT symbol, amount, locked_tokens FROM portfolio WHERE user_id = ?', 
                         (current_user.username,)).fetchall()
     
     # Also fetch active orders to show "reserved" amounts or just list them if needed
@@ -149,6 +149,7 @@ async def read_own_items(
         result.append({
             "item_id": item['symbol'], 
             "amount": item['amount'],
+            "locked_tokens": item['locked_tokens'],
             "owner": current_user.username
         })
         
