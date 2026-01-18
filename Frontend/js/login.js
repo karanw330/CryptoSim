@@ -600,17 +600,6 @@ document.getElementById('resetPasswordFormElement').addEventListener('submit', a
 
 // Redirect to home page
 function redirectToHomePage() {
-    // document.body.innerHTML = `
-    //     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-    //         <div style="text-align: center; padding: 40px;">
-    //             <h1 style="font-size: 3rem; margin-bottom: 20px;">📊 Welcome to TradeSnap</h1>
-    //             <p style="font-size: 1.2rem; color: #b0b0b0; margin-bottom: 40px;">Your trading dashboard will be here</p>
-    //             <div style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin: 10px;">
-    //                 Logged in successfully! ✓
-    //             </div>
-    //         </div>
-    //     </div>
-    // `;
     window.location.replace("./home.html")
 }
 
@@ -691,7 +680,10 @@ async function handleCredentialResponse(response) {
         })
         const data = await res.json();
 
-        if (!res.ok) {                   // res is ok when status code is 2XX
+        if (!res.ok) {// res is ok when status code is 2XX
+
+            loginBtn.textContent = 'Sign In';
+            loginBtn.disabled = false;
             if (data.detail.type === "user") {
                 showError('email', data.detail.content || 'User not found');
                 throw new Error('user');
@@ -699,7 +691,7 @@ async function handleCredentialResponse(response) {
                 showError('password', data.detail.content || 'Incorrect password');
                 throw new Error('password');
             } else {
-                showError('email', data.detail || 'Login failed');
+                showError('email', data.detail || 'Login failed, unkown error occured');
                 throw new Error('unknown');
             }
         }
