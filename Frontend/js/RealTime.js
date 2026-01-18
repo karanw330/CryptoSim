@@ -454,6 +454,7 @@ async function syncDashboard() {
         const portfolioRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/items/');
         if (portfolioRes && portfolioRes.ok) {
             const holdings = await portfolioRes.json();
+            console.log("Holdings: ", holdings);
             const holdingsList = document.getElementById('dashboard_holdings_list');
 
             let totalHoldingsValue = 0;
@@ -471,8 +472,11 @@ async function syncDashboard() {
                 const lockedTokens = item.locked_tokens || 0;
                 const totalUnits = amount + lockedTokens;
 
-                const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol.toLowerCase());
-                const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
+
+               // const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol);
+
+                // const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
+                const currentPrice = profile[symbol].price;
                 const val = totalUnits * currentPrice;
                 totalHoldingsValue += val;
 
