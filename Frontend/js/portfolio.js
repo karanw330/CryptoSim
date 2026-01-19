@@ -416,10 +416,18 @@ function switchTab(tabName) {
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
-    initChart();
     // syncPortfolio(); // Deferred until price load
     initWebSockets();
     initUserMenu();
+
+    // Safety fallback: if prices take too long, sync anyway
+    setTimeout(() => {
+        if (!window.portfolioData.initialPriceLoadComplete) {
+            console.warn("Price load timed out, forcing portfolio sync");
+            window.portfolioData.initialPriceLoadComplete = true;
+            syncPortfolio();
+        }
+    }, 3000);
 });
 
 function initUserMenu() {
