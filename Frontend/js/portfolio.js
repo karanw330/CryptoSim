@@ -406,7 +406,36 @@ document.addEventListener('DOMContentLoaded', () => {
     initChart();
     syncPortfolio();
     initWebSockets();
+    initUserMenu();
 });
+
+function initUserMenu() {
+    const userMenu = document.getElementById('stockUserMenu');
+    const dropdown = document.getElementById('userDropdown');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (userMenu && dropdown) {
+        userMenu.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('active');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!userMenu.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function () {
+            // Logout logic
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.replace('./login_page.html');
+        });
+    }
+}
 
 // Make chart responsive
 window.addEventListener('resize', function () {
