@@ -449,7 +449,7 @@ body {
 .user-dropdown {
     position: absolute;
     top: 100%;
-    right: 0;
+    left: 0;
     margin-top: 0.5rem;
     background: #1a1a1a;
     border: 1px solid #333333;
