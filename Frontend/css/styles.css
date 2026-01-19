@@ -446,6 +446,64 @@
     background: #404040;
 }
 
+/* User Menu Dropdown */
+.user-menu-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.user-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.5rem;
+    background: #1a1a1a;
+    border: 1px solid #333333;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    min-width: 150px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.user-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.user-dropdown__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    color: #a3a3a3;
+    font-size: 0.875rem;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.user-dropdown__item:hover {
+    background: #222222;
+    color: #ffffff;
+}
+
+.user-dropdown__item--danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
 /* Stock Ticker Styles */
 .stock-ticker {
     background: #0a0a0a;

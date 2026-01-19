@@ -479,7 +479,7 @@ async function syncDashboard() {
                 const totalUnits = amount + lockedTokens;
 
 
-               // const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol);
+                // const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol);
 
                 // const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
                 const currentPrice = profile[symbol].price;
@@ -781,17 +781,25 @@ const StockMarketHeader = {
         }
 
         if (userMenu) {
-            userMenu.addEventListener('click', function () {
-                window.dispatchEvent(new CustomEvent('stockUserMenuClick'));
-                window.logout(); // Simple click to logout for now
+            const dropdown = document.getElementById('userDropdown');
+            const logoutBtn = document.getElementById('logoutBtn');
+
+            userMenu.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (dropdown) dropdown.classList.toggle('active');
             });
 
-            userMenu.addEventListener('keypress', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    window.dispatchEvent(new CustomEvent('stockUserMenuClick'));
-                    window.logout();
+            document.addEventListener('click', function (e) {
+                if (dropdown && !userMenu.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('active');
                 }
             });
+
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function () {
+                    window.logout();
+                });
+            }
         }
     },
 
