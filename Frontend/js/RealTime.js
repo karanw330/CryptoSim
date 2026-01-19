@@ -493,7 +493,7 @@ async function syncDashboard() {
                 // const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol);
 
                 // const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
-                const currentPrice = profile[symbol].price;
+                const currentPrice = profile[symbol].price || 0;
                 const val = totalUnits * currentPrice;
                 totalHoldingsValue += val;
 
@@ -582,7 +582,7 @@ window.addEventListener('load', () => {
             window.initialPriceLoadComplete = true;
             syncDashboard();
         }
-    }, 3000);
+    }, 6000); // Increased to 6s to allow for slower connections
 });
 
 const symbolMap = {
