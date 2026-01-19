@@ -130,15 +130,15 @@
         <!-- Main Content Area -->
         <div class="main-content">
             <!-- TradingView Widget BEGIN -->
-            <div class="chart-container" id="chart-container" style="width:100%; height:68vh; max-width: 1200px;">
+            <div class="chart-container" id="chart-container">
                 <div style="text-align: center; padding-top: 30%; color: gray;">Loading chart...</div>
             </div>
             <!-- TradingView Widget END -->
 
             <!-- Trading Panel -->
-            <div class="trading-panel" style="height:68vh">
+            <div class="trading-panel">
                 <!-- Quick Order Section -->
-                <div class="panel-section" id="order_panel" style="height:64vh">
+                <div class="panel-section" id="order_panel">
                     <div class="section-title">Quick Order</div>
                     <div class="order-tabs">
                         <button class="order-tab active" onclick="switchTab(this, 'buy')">Buy</button>
@@ -176,8 +176,8 @@
 
             </div>
         </div>
-        <div class="main-content" style="height:35%;">
-            <div class="panel-section" style="width:20%;height: 100%;min-height:250px;">
+        <div class="main-content bottom-section">
+            <div class="panel-section balance-section">
                 <div class="section-title">Account Balance</div>
                 <div class="balance-item">
                     <span class="balance-label">Cash Available</span>
@@ -200,13 +200,13 @@
                     <span class="balance-value" id="buying_power">$51,694.64</span>
                 </div>
             </div>
-            <div class="panel-section" style="width:35%; height: 100%; overflow-y: scroll;min-height:250px;">
+            <div class="panel-section orders-section">
                 <div class="section-title" id="current_holdings_heading">Past Orders</div>
                 <span id="last">
                 </span>
             </div>
 
-            <div class="panel-section" style="width:40.8%;height: 100%;overflow-y: scroll;min-height:250px;">
+            <div class="panel-section pending-section">
                 <div class="section-title" id="pending_order_heading">Pending Orders</div>
                 <!--<div class="card-outer-container">-->
                 <span id="last_inactive_order">

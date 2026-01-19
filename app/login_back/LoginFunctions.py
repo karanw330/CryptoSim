@@ -15,7 +15,7 @@ from .LoginPydanticModels import *
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
-ALGORITHM = os.getenv("HASHING_ALGORITHM", "HS256")
+ALGORITHM = os.getenv("HASHING_ALGO")
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 password_hash = PasswordHash.recommended()
