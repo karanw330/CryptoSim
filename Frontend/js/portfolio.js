@@ -51,7 +51,8 @@ window.portfolioData = {
     prices: {},
     chart: null,
     totalHoldingsValue: 0,
-    startingCapital: 100000 // Fallback if no trades
+    startingCapital: 100000,
+    initialPriceLoadComplete: false
 };
 
 window.profile = {
@@ -376,8 +377,19 @@ function initWebSockets() {
             if (data.type === "send_stock_data") {
                 window.portfolioData.prices[data.symbol] = data;
 
+                if (!window.portfolioData.initialPriceLoadComplete) {
+                    const requiredSymbols = Object.keys(window.profile);
+                    const loadedSymbols = Object.keys(window.portfolioData.prices);
+                    const allLoaded = requiredSymbols.every(s => loadedSymbols.includes(s));
+
+                    if (allLoaded) {
+                        window.portfolioData.initialPriceLoadComplete = true;
+                        syncPortfolio();
+                    }
+                }
+
                 // Throttle updates
-                if (!window._last_ui_update || Date.now() - window._last_ui_update > 2000) {
+                if (window.portfolioData.initialPriceLoadComplete && (!window._last_ui_update || Date.now() - window._last_ui_update > 2000)) {
                     renderHoldings();
                     updateStats();
                     updateMovers();
@@ -404,9 +416,18 @@ function switchTab(tabName) {
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
-    syncPortfolio();
+    // syncPortfolio(); // Deferred until price load
     initWebSockets();
     initUserMenu();
+
+    // Safety fallback: if prices take too long, sync anyway
+    setTimeout(() => {
+        if (!window.portfolioData.initialPriceLoadComplete) {
+            console.warn("Price load timed out, forcing portfolio sync");
+            window.portfolioData.initialPriceLoadComplete = true;
+            syncPortfolio();
+        }
+    }, 3000);
 });
 
 function initUserMenu() {

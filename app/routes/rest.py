@@ -69,6 +69,7 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
                            (new_amt, user_id, data.symbol))
             if data.order_type == "market":
                 virtual_price = data.entry_price
+                cursor.execute('UPDATE users SET balance_usd = balance_usd + ? WHERE username = ?',(data.order_quantity * virtual_price, user_id))
             elif data.order_type == "stop-loss":
                 virtual_price = data.stop_value
                 cursor.execute('UPDATE portfolio SET locked_tokens = locked_tokens + ? WHERE user_id = ? AND symbol = ?',(data.order_quantity, user_id, data.symbol))

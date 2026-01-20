@@ -1038,6 +1038,7 @@ body {
 /* Bottom Section Adjustments */
 .bottom-section {
     height: auto;
+    max-height: 32.3vh;
     flex-wrap: wrap;
 }
 
