@@ -147,6 +147,7 @@ window.profile = {
     }
 }
 
+window.initialPriceLoadComplete = false;
 first_socket.onmessage = function (event) {
     let stocks_data = JSON.parse(event.data);
     if (order_type.value === 'market') {
@@ -181,7 +182,17 @@ first_socket.onmessage = function (event) {
 
     window.symbol = stocks_data.symbol;
     if (symbol === selected) {
-        updateMarketDisplay(stocks_data, profile[stocks_data.symbol]);
+        window.updateMarketDisplay(stocks_data, window.profile[stocks_data.symbol]);
+    }
+
+    if (!window.initialPriceLoadComplete) {
+        const requiredSymbols = Object.keys(window.profile);
+        const allLoaded = requiredSymbols.every(s => window.profile[s].price !== undefined);
+
+        if (allLoaded) {
+            window.initialPriceLoadComplete = true;
+            syncDashboard();
+        }
     }
 
     // Update active order cards for this symbol
@@ -482,7 +493,7 @@ async function syncDashboard() {
                 // const priceInfo = Object.values(profile).find(p => p.live_symbol === symbol || p.curr_price_var === symbol);
 
                 // const currentPrice = priceInfo ? (priceInfo.price || 0) : 0;
-                const currentPrice = profile[symbol].price;
+                const currentPrice = profile[symbol].price || 0;
                 const val = totalUnits * currentPrice;
                 totalHoldingsValue += val;
 
@@ -560,9 +571,18 @@ async function syncDashboard() {
 }
 
 window.addEventListener('load', () => {
-    syncDashboard();
+    // syncDashboard(); // Deferred until price load
     // Re-sync every 5 minutes (300,000 ms) instead of on every price tick
     setInterval(syncDashboard, 300000);
+
+    // Safety fallback: if prices take too long, sync anyway
+    setTimeout(() => {
+        if (!window.initialPriceLoadComplete) {
+            console.warn("Price load timed out, forcing dashboard sync");
+            window.initialPriceLoadComplete = true;
+            syncDashboard();
+        }
+    }, 6000); // Increased to 6s to allow for slower connections
 });
 
 const symbolMap = {
