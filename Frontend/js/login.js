@@ -8,7 +8,7 @@ let isForgotPassword = false;
 
 async function sendOTP(email) {
     try {
-        const res = await fetch('http://localhost:8000/send-otp', {
+        const res = await fetch('http://localhost:8000/send_otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email })
@@ -27,7 +27,7 @@ async function sendOTP(email) {
 
 async function verifyOTP(email, otp) {
     try {
-        const res = await fetch('http://localhost:8000/verify-otp', {
+        const res = await fetch('http://localhost:8000/verify_otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email, otp: otp })

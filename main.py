@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.login_back import login
+from app.otp_verification import apis
 from app.routes import webs
 import threading
 from app.routes import webs, rest
@@ -28,6 +29,7 @@ app.add_middleware(
 threading.Thread(target=webs.start_market_ws, daemon=True).start()
 
 app.include_router(login.Router, tags=["login"])
+app.include_router(apis.router, tags=["otp"])
 app.include_router(rest.router)
 app.include_router(webs.router)  # <-- expose websocket routes (/ws/market, /ws/user/trades)
 @app.get("/ping")
