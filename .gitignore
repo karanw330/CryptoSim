@@ -54,3 +54,7 @@ test_main.http
 
 *.db
 *.sqlite3
+
+# ========================
+# OTP Verification
+# ========================
