@@ -105,7 +105,6 @@ async function loginUser(email, password) {
     const data = await res.json();
 
     if (!res.ok) {
-        console.log(data.detail);                        // res is ok when status code is 2XX
         loginBtn.textContent = 'Sign In';
         loginBtn.disabled = false;
         if (data.detail.type === "user") {
@@ -733,7 +732,6 @@ async function handleCredentialResponse(response) {
 
         // ---- ERROR ----
         if (!res.ok) {
-            console.log(data.detail)
             signupBtn.textContent = 'Create Account';
             signupBtn.disabled = false;//// res is ok when status code is 2XX
             if (data.detail.type === 'user') {
