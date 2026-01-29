@@ -217,9 +217,6 @@ first_socket.onmessage = function (event) {
     // Removal of high-frequency syncDashboard call as per user request (switched to interval)
 };
 
-first_socket.onclose = function (event) {
-    console.log('socket closed');
-}
 
 const user_trade_url = `${window.APP_CONFIG.WS_BASE_URL}/ws/user/trades?token=` + (localStorage.getItem('access_token') || "");
 const second_socket = new WebSocket(user_trade_url);
@@ -236,7 +233,6 @@ function createActiveOrderCard(order) {
     const entry_price = order.entry_price || order.entry || 0;
     const new_entry_price = entry_price.toLocaleString('en-US');
     const calc_new_entry_price = Number(entry_price);
-    console.log(order);
     return `
     <div class="cards-container" id="ODID${order_id}">
         <div class="trade-order-card" style="height: 23vh;margin-bottom: 10px;">
@@ -358,7 +354,6 @@ function createInactiveOrderCard(order) {
 
 second_socket.onmessage = function (event) {
     let user_trade_data = JSON.parse(event.data);
-    console.log("WS Message:", user_trade_data);
 
     if (user_trade_data["data_type"] === "balance_update") {
         const newBalance = parseFloat(user_trade_data.balance_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -471,7 +466,6 @@ async function syncDashboard() {
         const portfolioRes = await fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/users/me/items/`);
         if (portfolioRes && portfolioRes.ok) {
             const holdings = await portfolioRes.json();
-            console.log("Holdings: ", holdings);
             const holdingsList = document.getElementById('dashboard_holdings_list');
 
             let totalHoldingsValue = 0;
@@ -735,7 +729,6 @@ class FinancialSelector {
         const security = this.securities[index];
         this.selectedText.textContent = `${security.symbol} - ${security.name}`;
         let selectedSymbol = document.getElementById("selected-symbol").innerHTML;
-        console.log(selectedSymbol);
         window.curr_order_symbol = symbolMap[selectedSymbol].symbol;
 
         let config = symbolMap[selectedSymbol];
@@ -863,7 +856,6 @@ function switchTab(tab, type) {
         button.classList.add('sell-btn');
         order = "Sell";
     }
-    console.log(order);
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -977,7 +969,6 @@ function checkOrderMod() {
 function showModifyModal(id) {
     localStorage.setItem('current_mod_id', id);
 
-    console.log(`modify ${id}`);
     let asset = document.getElementById(`ASSET${id}`).innerText;
     let quan = document.getElementById(`Q${id}`).innerText;
     let entry = document.getElementById(`ENTRY${id}`).innerText;
@@ -986,7 +977,6 @@ function showModifyModal(id) {
     let bs = document.getElementById(`BS${id}`).innerText;
     let type = document.getElementById(`TYPE${id}`).innerText;
     document.getElementById("trxOrderType").innerText = type + " (" + bs + ")";
-    console.log("ass=", asset, "quan=", quan, "entry=", entry, "lim=", lim, "stop=", stop, "type=", type);
     document.getElementById("trxAssetIdentifier").innerText = asset;
     // document.getElementById("trxEntryQuote").innerText='$'+entry;
     const modLim = document.getElementById("trxLimitInput");
@@ -1027,7 +1017,6 @@ function showOrderModal() {
         document.getElementById("stop").remove();
     }
     catch (error) {
-        console.log(error.message);
     }
     if (order_type.value === "limit") {
         html_code = `<div class="summary-row" id="lim">
@@ -1087,7 +1076,6 @@ function hideOrderModal() {
 
 function updateModalContent() {
     if (order_type) {
-        console.log(symbol);
         document.getElementById('orderTypeValue').textContent = order_type.value + " " + order;
     }
     if (curr_order_symbol) {
@@ -1127,15 +1115,10 @@ let box = document.getElementById("orderConfirmModal");
 
 function update() {
     let trx_type = document.getElementById("trxOrderType").innerText;
-    console.log(typeof trx_type);
     let trx_quan = +document.getElementById("trxVolumeInput").value;
-    console.log(typeof trx_quan);
     let trx_limval = +parseFloat(document.getElementById("trxLimitInput").value);
-    console.log(typeof trx_limval);
     let trx_stopval = +parseFloat(document.getElementById("trxStopInput").value);
-    console.log(typeof trx_stopval);
     let trx_aggregate = document.getElementById("trxAggregateSum");
-    console.log(typeof trx_aggregate);
     const in_box = document.getElementById("inner-modify");
     const confirmBtn = document.querySelector('.trx-execute-control');
     const originalText = confirmBtn.innerText;
@@ -1144,7 +1127,7 @@ function update() {
     confirmBtn.innerText = "Updating...";
 
     temphtml = in_box.innerHTML;
-    fetchWithAuth('http://127.0.0.1:8000/updateorder', {
+    fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/updateorder`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1182,7 +1165,6 @@ function update_conf(temp, status, obj) {
     document.getElementById("inner-modify").innerHTML = temp;
     if (status === "ok") {
         showTradeNotification(`Order # updated!`, 10000);
-        console.log(obj);
     }
     else {
         showTradeFailureNotification("Failed to update order", 10000);
@@ -1199,10 +1181,9 @@ function delete_order(button_id) {
     btn.disabled = true;
     btn.innerText = "Closing...";
 
-    console.log("Deleting order ID:", odid);
     const element = document.getElementById(`ODID${odid}`);
 
-    fetchWithAuth('http://127.0.0.1:8000/delorder', {
+    fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/delorder`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ "order_id": odid })
@@ -1260,7 +1241,7 @@ function orderDetails() {
             "date": today_date,
             "time": curr_time
         }
-        fetchWithAuth('http://127.0.0.1:8000/order', {
+        fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/order`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(order_data)
@@ -1293,7 +1274,6 @@ function confirmOrder(status) {
     hideOrderModal();
     box.innerHTML = temphtml;
     if (status === "ok") {
-        console.log("ou");
         showTradeNotification("Order placed!", 10000);
     }
     else {
