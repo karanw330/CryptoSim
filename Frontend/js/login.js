@@ -8,7 +8,7 @@ let isForgotPassword = false;
 
 async function sendOTP(email) {
     try {
-        const res = await fetch('http://localhost:8000/send_otp', {
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/send_otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email })
@@ -27,7 +27,7 @@ async function sendOTP(email) {
 
 async function verifyOTP(email, otp) {
     try {
-        const res = await fetch('http://localhost:8000/verify_otp', {
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/verify_otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email, otp: otp })
@@ -46,7 +46,7 @@ async function verifyOTP(email, otp) {
 
 async function registerUser(name, email, password) {
     const signupBtn = document.getElementById("createAccBtn");
-    const res = await fetch('http://localhost:8000/register', {
+    const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -92,7 +92,7 @@ async function registerUser(name, email, password) {
 
 async function loginUser(email, password) {
     const loginBtn = document.getElementById("loginBtn");
-    const res = await fetch('http://localhost:8000/token', {
+    const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/token`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -573,7 +573,7 @@ document.getElementById('resetPasswordFormElement').addEventListener('submit', a
     submitBtn.disabled = true;
 
     try {
-        const res = await fetch('http://localhost:8000/reset-password', {
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/reset-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -668,7 +668,7 @@ async function handleCredentialResponse(response) {
             loginBtn.disabled = true;
         }
 
-        const res = await fetch('http://localhost:8000/token', {
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -719,7 +719,7 @@ async function handleCredentialResponse(response) {
             signupBtn.disabled = true;
         }
 
-        const res = await fetch('http://localhost:8000/register', {
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
