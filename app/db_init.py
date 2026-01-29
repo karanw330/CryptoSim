@@ -1,5 +1,7 @@
 import sqlite3
 import os
+import subprocess
+import sys
 
 DB_NAME = "cryptosim.db"
 
@@ -65,21 +67,28 @@ def init_db():
         )
     ''')
 
-    # Seed Default User
-    c.execute('SELECT * FROM users WHERE username = ?', ('johndoe',))
-    if c.fetchone() is None:
-        print("Seeding default user...")
-        # Password: "secret" (hashed)
-        # Using the hash from the original code
-        default_hash = "$argon2id$v=19$m=65536,t=3,p=4$wagCPXjifgvUFBzq4hqe3w$CYaIb8sB+wtD+Vu/P4uod1+Qof8h+1g7bbDlBID48Rc"
-        c.execute('''
-            INSERT INTO users (username, email, sub, hashed_password, disabled, balance_usd)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', ('johndoe', 'johndoe@example.com', "", default_hash, 0, 100000.0))
-        
     conn.commit()
     conn.close()
-    print("Database initialized.")
+    print("Base database initialized.")
+
+    # --- Run Migrations ---
+    print("Running migrations from app/db_migrations...")
+    migration_dir = os.path.join("app", "db_migrations")
+    if os.path.exists(migration_dir):
+        # Sort migrations to run in order (0001, 0002, etc.)
+        migrations = sorted([f for f in os.listdir(migration_dir) if f.endswith(".py") and f != "__init__.py"])
+        for migration in migrations:
+            print(f"Executing migration: {migration}")
+            migration_path = os.path.join(migration_dir, migration)
+            try:
+                # Use sys.executable to ensure we use the same python environment
+                subprocess.run([sys.executable, "-m", f"app.db_migrations.{migration[:-3]}"], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Error running migration {migration}: {e}")
+            except Exception as e:
+                print(f"Unexpected error running {migration}: {e}")
+    
+    print("All migrations checked/completed.")
 
 if __name__ == "__main__":
     init_db()
