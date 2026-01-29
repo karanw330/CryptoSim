@@ -12,7 +12,7 @@ async function getAccessToken() {
         if (payload.exp - now < 60) {
             const refreshToken = localStorage.getItem('refresh_token');
             if (!refreshToken) return token;
-            const res = await fetch('http://127.0.0.1:8000/refresh', {
+            const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refresh_token: refreshToken })
@@ -194,7 +194,7 @@ function updateChart(holdings) {
 // --- Dashboard Sync ---
 async function syncPortfolio() {
     try {
-        const userRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/');
+        const userRes = await fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/users/me/`);
         if (userRes && userRes.ok) {
             const userData = await userRes.json();
             window.portfolioData.balance = userData.balance_usd;
@@ -204,13 +204,13 @@ async function syncPortfolio() {
             }
         }
 
-        const portfolioRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/items/');
+        const portfolioRes = await fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/users/me/items/`);
         if (portfolioRes && portfolioRes.ok) {
             window.portfolioData.holdings = await portfolioRes.json();
             renderHoldings();
         }
 
-        const tradesRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/trades');
+        const tradesRes = await fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/users/me/trades`);
         if (tradesRes && tradesRes.ok) {
             window.portfolioData.trades = await tradesRes.json();
             calculateStartingCapital();
@@ -369,7 +369,7 @@ function updateStats() {
 
 // --- WebSocket Connection ---
 function initWebSockets() {
-    const socket = new WebSocket('ws://127.0.0.1:8000/ws/market');
+    const socket = new WebSocket(`${window.APP_CONFIG.WS_BASE_URL}/ws/market`);
 
     socket.onmessage = function (event) {
         try {

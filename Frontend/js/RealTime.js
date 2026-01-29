@@ -2,7 +2,7 @@ const datetime = new Date();
 today_date = datetime.getFullYear() + '-' + (datetime.getMonth() + 1) + '-' + datetime.getDate();
 const curr_time = datetime.getHours() + ':' + datetime.getMinutes() + ':' + datetime.getSeconds();
 window.selected = 'BTC';
-const price_url = 'ws://127.0.0.1:8000/ws/market'
+const price_url = `${window.APP_CONFIG.WS_BASE_URL}/ws/market`
 const first_socket = new WebSocket(price_url);
 
 async function getAccessToken() {
@@ -16,7 +16,7 @@ async function getAccessToken() {
             const refreshToken = localStorage.getItem('refresh_token');
             if (!refreshToken) return token;
 
-            const res = await fetch('http://127.0.0.1:8000/refresh', {
+            const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refresh_token: refreshToken })
@@ -221,7 +221,7 @@ first_socket.onclose = function (event) {
     console.log('socket closed');
 }
 
-const user_trade_url = 'ws://127.0.0.1:8000/ws/user/trades?token=' + (localStorage.getItem('access_token') || "");
+const user_trade_url = `${window.APP_CONFIG.WS_BASE_URL}/ws/user/trades?token=` + (localStorage.getItem('access_token') || "");
 const second_socket = new WebSocket(user_trade_url);
 const last = document.getElementById("last");
 function createActiveOrderCard(order) {
@@ -399,7 +399,7 @@ second_socket.onmessage = function (event) {
 async function syncDashboard() {
     try {
         // 1. Fetch User Profile (Balance)
-        const userRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/');
+        const userRes = await fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/users/me/`);
         let userBalance = 0;
         let lockedUsd = 0;
 
@@ -434,7 +434,7 @@ async function syncDashboard() {
         }
 
         // 2. Fetch Pending Orders
-        const orderRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/orders');
+        const orderRes = await fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/users/me/orders`);
         if (orderRes && orderRes.ok) {
             const orders = await orderRes.json();
             if (inactive_span) {
@@ -451,7 +451,7 @@ async function syncDashboard() {
         }
 
         // 3. Fetch Past Trades
-        const tradeRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/trades');
+        const tradeRes = await fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/users/me/trades`);
         let allTrades = [];
         if (tradeRes && tradeRes.ok) {
             allTrades = await tradeRes.json();
@@ -468,7 +468,7 @@ async function syncDashboard() {
         }
 
         // 4. Fetch Portfolio (Holdings) & Calculate ROI
-        const portfolioRes = await fetchWithAuth('http://127.0.0.1:8000/users/me/items/');
+        const portfolioRes = await fetchWithAuth(`${window.APP_CONFIG.API_BASE_URL}/users/me/items/`);
         if (portfolioRes && portfolioRes.ok) {
             const holdings = await portfolioRes.json();
             console.log("Holdings: ", holdings);

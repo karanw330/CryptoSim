@@ -34,13 +34,6 @@ class UserInDB(User):
     hashed_password: str | None = None
     sub: str | None = None
 
-class OTPRequest(BaseModel):
-    email: str
-
-class OTPVerify(BaseModel):
-    email: str
-    otp: str
-
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 

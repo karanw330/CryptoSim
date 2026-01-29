@@ -25,7 +25,7 @@ def generate_otp():
 
 def send_otp_email(target_email: str, otp: int):
     """Sends an OTP email using the provided HTML template."""
-    sender_email = "simstock206@gmail.com"
+    sender_email = "crypsimmails@gmail.com"
     app_password = os.getenv("CRYPTO_SIM_KEY")
     
     if not app_password:
