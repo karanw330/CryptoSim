@@ -95,10 +95,15 @@ async def start_market_ws():
     
     uri = f"wss://ws.finnhub.io?token={os.getenv('FINNHUB_TOKEN')}"
     
+    retry_delay = 5  # Start with 5 seconds
+    max_delay = 300  # Max 5 minutes
+    
     while True:
         try:
             async with websockets.connect(uri) as ws:
                 print("Market WS connected!")
+                retry_delay = 5  # Reset delay on successful connection
+                
                 for sym in symbols:
                     await ws.send(json.dumps({"type": "subscribe", "symbol": sym}))
                 
@@ -145,5 +150,16 @@ async def start_market_ws():
                         await price_tick(symbol, last_price)
                         
         except Exception as e:
-            print(f"Market WS error/closed: {e}. Reconnecting in 5 seconds...")
-            await asyncio.sleep(5)
+            error_msg = str(e)
+            print(f"Market WS error/closed: {error_msg}")
+            
+            # Check for 429 Too Many Requests
+            if "429" in error_msg:
+                print("Detected 429 (Too Many Requests). Waiting 60 seconds before retrying...")
+                await asyncio.sleep(60)
+                retry_delay = 5 # Reset exponential backoff after the long wait
+            else:
+                print(f"Reconnecting in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+                # Exponential backoff
+                retry_delay = min(retry_delay * 2, max_delay)
