@@ -116,11 +116,13 @@ async def start_market_ws():
                         date_of_stockprice = ist_datetime.strftime("%Y-%m-%d")
                         time_of_stockprice = ist_datetime.strftime("%H:%M:%S")
                         symbol = data["s"]
-                        
-                        open_price = float(ticker_dic[symbol]['openPrice'])
+                        try:
+                            open_price = float(ticker_dic[symbol]['openPrice'])
+                        except:
+                            open_price = 0
                         abs_change = absolute_change(last_price, open_price)
                         perc_change = (abs_change / open_price) * 100
-                        
+                        print(ticker_dic)
                         payload = json.dumps({
                             "type": "send_stock_data",
                             "high": float(ticker_dic[symbol]['highPrice']),
