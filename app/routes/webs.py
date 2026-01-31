@@ -119,7 +119,7 @@ async def start_market_ws():
                         try:
                             open_price = float(ticker_dic[symbol]['openPrice'])
                         except:
-                            open_price = 0
+                            open_price = 1
                         abs_change = absolute_change(last_price, open_price)
                         perc_change = (abs_change / open_price) * 100
                         print(ticker_dic)
