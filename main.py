@@ -1,9 +1,10 @@
 from fastapi import FastAPI
+import asyncio
+from contextlib import asynccontextmanager
 
 from app.login_back import login
 from app.otp_verification import apis
 from app.routes import webs
-import threading
 from app.routes import webs, rest
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +16,19 @@ db_init.init_db()
 from app.order_book import recover_active_orders
 recover_active_orders()
 
-app = FastAPI(title="Stock Market Simulator")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start market websocket background task
+    task = asyncio.create_task(webs.start_market_ws())
+    yield
+    # Shutdown: Cancel the task
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        print("Market WS task cancelled")
+
+app = FastAPI(title="Stock Market Simulator", lifespan=lifespan)
 
 
 app.add_middleware(
@@ -25,8 +38,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-threading.Thread(target=webs.start_market_ws, daemon=True).start()
 
 app.include_router(login.Router, tags=["login"])
 app.include_router(apis.router, tags=["otp"])
