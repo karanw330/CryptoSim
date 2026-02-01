@@ -122,7 +122,6 @@ async def start_market_ws():
                             open_price = 1
                         abs_change = absolute_change(last_price, open_price)
                         perc_change = (abs_change / open_price) * 100
-                        print(ticker_dic)
                         payload = json.dumps({
                             "type": "send_stock_data",
                             # try:

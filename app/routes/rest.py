@@ -35,7 +35,7 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
                 new_bal = user['balance_usd'] - (data.order_quantity * virtual_price)
                 cursor.execute('UPDATE users SET balance_usd = ? WHERE username = ?', (new_bal, user_id))
                 stat = cursor.execute('SELECT * FROM portfolio WHERE user_id = ? AND symbol = ?', (user_id, data.symbol)).fetchone()
-                if stat.rowcount == 0 or not stat:
+                if not stat:
                     cursor.execute('INSERT INTO portfolio (user_id, symbol, amount) VALUES (?, ?, ?)', (user_id, data.symbol, data.order_quantity))
                 else:
                     cursor.execute('UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?',)
