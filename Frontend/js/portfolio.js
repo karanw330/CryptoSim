@@ -46,6 +46,7 @@ async function fetchWithAuth(url, options = {}) {
 // Global data state
 window.portfolioData = {
     balance: 0,
+    locked_usd: 0,
     holdings: [],
     trades: [],
     prices: {},
@@ -198,9 +199,10 @@ async function syncPortfolio() {
         if (userRes && userRes.ok) {
             const userData = await userRes.json();
             window.portfolioData.balance = userData.balance_usd;
+            window.portfolioData.locked_usd = userData.locked_usd || 0;
             document.getElementById('dashboard_cash_balance').textContent = `$${userData.balance_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             if (document.getElementById('stockUserMenu')) {
-                document.getElementById('stockUserMenu').textContent = userData.username.substring(0, 2).toUpperCase();
+                document.getElementById('stockUserMenu').textContent = (userData.username || "JD").substring(0, 2).toUpperCase();
             }
         }
 
@@ -225,7 +227,8 @@ async function syncPortfolio() {
 function calculateStartingCapital() {
     let netSpent = 0;
     window.portfolioData.trades.forEach(t => {
-        const cost = t.quantity * t.price;
+        // 'price' field in orders already stores total trade value for completed orders
+        const cost = t.price;
         if (t.side === 'Buy') netSpent += cost;
         else if (t.side === 'Sell') netSpent -= cost;
     });
@@ -259,12 +262,12 @@ function renderHoldings() {
 
         symbolTrades.forEach(t => {
             if (t.side === 'Buy') {
-                totalCost += (t.quantity * t.price);
+                totalCost += t.price;
                 totalQty += t.quantity;
                 side = 'Buy';
             } else if (t.side === 'Sell' && totalQty === 0) {
                 // Potential short position entry
-                totalCost += (t.quantity * t.price);
+                totalCost += t.price;
                 totalQty += t.quantity;
                 side = 'Sell';
             }
@@ -317,6 +320,13 @@ function updateStats() {
     const initialBalance = window.portfolioData.startingCapital || 100000;
     const totalProfit = totalValue - initialBalance;
     const totalProfitPerc = initialBalance > 0 ? (totalProfit / initialBalance) * 100 : 0;
+    const buyingPower = window.portfolioData.balance - window.portfolioData.locked_usd;
+
+    // Update Buying Power display
+    const bpEl = document.getElementById('dashboard_buying_power');
+    if (bpEl) {
+        bpEl.textContent = `Buying Power: $${buyingPower.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
 
     // Calculate Today's P&L based on holdings and their daily percentage change
     let todayPnL = 0;

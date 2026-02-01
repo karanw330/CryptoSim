@@ -38,7 +38,7 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
                 if not stat:
                     cursor.execute('INSERT INTO portfolio (user_id, symbol, amount) VALUES (?, ?, ?)', (user_id, data.symbol, data.order_quantity))
                 else:
-                    cursor.execute('UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?',)
+                    cursor.execute('UPDATE portfolio SET amount = amount + ? WHERE user_id = ? AND symbol = ?',(data.order_quantity, user_id, data.symbol))
             elif data.order_type == "stop-loss":
                 virtual_price = data.stop_value
                 req= data.order_quantity * virtual_price
