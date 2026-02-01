@@ -125,8 +125,12 @@ async def start_market_ws():
                         print(ticker_dic)
                         payload = json.dumps({
                             "type": "send_stock_data",
-                            "high": float(ticker_dic[symbol]['highPrice']),
-                            "low": float(ticker_dic[symbol]['lowPrice']),
+                            try:
+                                "high": float(ticker_dic[symbol]['highPrice']),
+                                "low": float(ticker_dic[symbol]['lowPrice']),
+                            except:
+                                "high": 1,
+                                "low": 1,
                             "openprice": open_price,
                             "last_price": last_price,
                             "date": str(date_of_stockprice),
