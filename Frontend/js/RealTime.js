@@ -1153,9 +1153,13 @@ function update() {
         })
         .then(result => {
             if (result) {
-                showTradeNotification("Order updated successfully", 5000);
-                dismissAlterationPanel();
-                syncDashboard();
+                if (result.status === "ok") {
+                    showTradeNotification("Order updated successfully", 5000);
+                    dismissAlterationPanel();
+                    syncDashboard();
+                } else {
+                    showTradeFailureNotification(result.reason || result.detail || "Update failed", 5000);
+                }
             }
         })
         .catch(e => console.error("Update error", e));
@@ -1205,6 +1209,8 @@ function delete_order(button_id) {
                 showTradeNotification(`Order #${odid} closed!`, 5000);
                 if (element) element.remove();
                 syncDashboard();
+            } else if (result) {
+                showTradeFailureNotification(result.reason || result.detail || `Failed to close order #${odid}`, 5000);
             }
         })
         .catch(e => console.error("Delete error", e));
@@ -1264,6 +1270,9 @@ function orderDetails() {
                     hideOrderModal();
                     clearOrderFields();
                     syncDashboard();
+                } else if (result) {
+                    showTradeFailureNotification(result.reason || result.detail || "Order failed", 5000);
+                    hideOrderModal();
                 }
             })
             .catch(e => console.error("Order error", e));
