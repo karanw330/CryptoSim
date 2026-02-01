@@ -413,11 +413,11 @@ async function syncDashboard() {
                 document.getElementById('cash_available').textContent = `$${userBalance.toLocaleString('en-US')}`;
             }
             if (document.getElementById('buying_power')) {
-                document.getElementById('buying_power').textContent = `$${userBalance.toLocaleString('en-US')}`;
+                document.getElementById('buying_power').textContent = `$${(userBalance - lockedUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             }
 
             if (document.getElementById('dashboard_buying_power')) {
-                document.getElementById('dashboard_buying_power').textContent = `Buying Power: $${userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('dashboard_buying_power').textContent = `Buying Power: $${(userBalance - lockedUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             }
 
             // Update user initials
