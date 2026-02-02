@@ -38,26 +38,31 @@ def send_otp_email(target_email: str, otp: int):
     body = f"""
     <!DOCTYPE html>
     <html lang="en">
-      <body style="margin: 0; padding: 0; background-color: #171515;">
-        <table align="center" width="100%" cellpadding="0" cellspacing="0" style="background-color: #171515; padding: 20px;">
+      <body style="margin: 0; padding: 0; background-color: #171515; font-family: Arial, sans-serif;">
+        <table align="center" width="100%" cellpadding="0" cellspacing="0" style="background-color: #171515; padding: 40px 20px;">
           <tr>
             <td align="center">
-            <h1 style="color: aliceblue; font-family: Arial, sans-serif">Cryp<span style="color:aqua">Sim</span></h1>
-              <h2 style="color: aliceblue; font-family: Arial, sans-serif;">Verify your login</h2>
-              <table cellpadding="0" cellspacing="0" style="background-color: #202626; border-radius: 10px; padding: 10px; width: 300px;">
-                <tr>
-                  <td>
-                    <p style="color: grey; font-family: Arial, sans-serif;">Below is your verification code</p>
-                    <table cellpadding="10" cellspacing="0" width="100%" style="border: 1px dashed grey; border-radius: 5px; text-align: center;">
-                      <tr>
-                        <td>
-                          <h1 style="color: crimson; font-family: Arial, sans-serif; margin: 0;">{otp}</h1>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
+              <div style="max-width: 400px; margin: 0 auto;">
+                <h1 style="color: aliceblue; margin-bottom: 20px;">Cryp<span style="color:aqua">Sim</span></h1>
+                <table align="center" cellpadding="0" cellspacing="0" style="background-color: #202626; border-radius: 12px; padding: 30px; width: 100%; border: 1px solid #333;">
+                  <tr>
+                    <td align="center">
+                      <h2 style="color: aliceblue; margin-top: 0; margin-bottom: 10px;">Verify your login</h2>
+                      <p style="color: #888; margin-bottom: 25px;">Below is your verification code</p>
+                      
+                      <table align="center" cellpadding="0" cellspacing="0" style="border: 2px dashed #444; border-radius: 8px; width: 200px; background-color: #171515;">
+                        <tr>
+                          <td align="center" style="padding: 15px;">
+                            <h1 style="color: crimson; font-size: 32px; letter-spacing: 5px; margin: 0;">{otp}</h1>
+                          </td>
+                        </tr>
+                      </table>
+                      
+                      <p style="color: #666; font-size: 12px; margin-top: 25px;">This code will expire in 5 minutes.</p>
+                    </td>
+                  </tr>
+                </table>
+              </div>
             </td>
           </tr>
         </table>
