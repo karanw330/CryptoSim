@@ -11,6 +11,9 @@ load_dotenv()
 # Global list to avoid immediate OTP collisions (as per user's logic)
 prev_otps = []
 
+# OTP In-memory store: {email: {"otp": str, "expires": datetime}}
+otp_store = {}
+
 def generate_otp():
     """Generates a 6-digit OTP and avoids collisions with recent ones."""
     otp = random.randint(100000, 999999)
@@ -39,7 +42,7 @@ def send_otp_email(target_email: str, otp: int):
         <table align="center" width="100%" cellpadding="0" cellspacing="0" style="background-color: #171515; padding: 20px;">
           <tr>
             <td align="center">
-            <h1 style="color: aliceblue; font-family: Arial, sans-serif">Trade<span style="color:aqua">Snap</span></h1>
+            <h1 style="color: aliceblue; font-family: Arial, sans-serif">Cryp<span style="color:aqua">Sim</span></h1>
               <h2 style="color: aliceblue; font-family: Arial, sans-serif;">Verify your login</h2>
               <table cellpadding="0" cellspacing="0" style="background-color: #202626; border-radius: 10px; padding: 10px; width: 300px;">
                 <tr>
@@ -77,3 +80,23 @@ def send_otp_email(target_email: str, otp: int):
     except Exception as e:
         print(f"Failed to send email: {e}")
         return False
+
+def verify_otp_logic(email: str, otp: str):
+    """Verifies the OTP against the stored value."""
+    if email not in otp_store:
+        return False
+    
+    stored_data = otp_store[email]
+    if datetime.now(timezone.utc) > stored_data["expires"]:
+        del otp_store[email]
+        return False
+    
+    if stored_data["otp"] == otp:
+        # To avoid circular imports, we'll import get_user locally
+        from app.login_back.LoginFunctions import get_user
+        user = get_user(email=email)
+        if user:
+            del otp_store[email]
+            return user
+        
+    return False
