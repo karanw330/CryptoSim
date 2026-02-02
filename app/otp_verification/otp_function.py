@@ -26,10 +26,10 @@ def generate_otp():
 def send_otp_email(target_email: str, otp: int):
     """Sends an OTP email using the provided HTML template."""
     sender_email = "crypsimmails@gmail.com"
-    app_password = os.getenv("CRYPTO_SIM_KEY")
+    app_password = os.getenv("CRYP_SIM_KEY")
     
     if not app_password:
-        print("WARNING: CRYPTO_SIM_KEY not found in environment variables.")
+        print("WARNING: CRYP_SIM_KEY not found in environment variables.")
         return False
 
     body = f"""
@@ -64,7 +64,7 @@ def send_otp_email(target_email: str, otp: int):
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Login Verification Code"
-    msg["From"] = f"TradeSnap <{sender_email}>"
+    msg["From"] = f"CrypSim <{sender_email}>"
     msg["To"] = target_email
     msg.attach(MIMEText(body, "html"))
 
