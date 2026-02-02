@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         print("Market WS task cancelled")
 
-app = FastAPI(title="Stock Market Simulator", lifespan=lifespan)
+app = FastAPI(title="CrypSim Crypto Trading Simulator", lifespan=lifespan)
 
 
 app.add_middleware(

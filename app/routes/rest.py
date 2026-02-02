@@ -111,7 +111,6 @@ async def order(data: OrderData, current_user: User = Depends(get_current_user))
         else:
             func = funcDict[data.order_type]
             await func(data)
-        print(f"Order {order_id} placed: {data}")
         return {"status": "ok", "order_id": order_id}
     except Exception as e:
         print("Error:", e)

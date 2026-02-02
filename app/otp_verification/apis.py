@@ -1,18 +1,14 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from .OtpPydanticModels import OTPRequest, OTPVerify
 from app.login_back.LoginPydanticModels import Token
-from app.login_back.LoginFunctions import (
-    otp_store, get_user, verify_otp_logic, 
-    create_access_token, create_refresh_token,
-    ACCESS_TOKEN_EXPIRE_MINUTES
-)
-from .otp_function import generate_otp, send_otp_email
+from .otp_function import generate_otp, send_otp_email, otp_store, verify_otp_logic
 from datetime import datetime, timedelta, timezone
 
 router = APIRouter()
 
 @router.post("/send_otp")
 async def send_otp(data: OTPRequest):
+    from app.login_back.LoginFunctions import get_user
     user = get_user(email=data.email)
     if not user:
         raise HTTPException(
@@ -41,6 +37,7 @@ async def send_otp(data: OTPRequest):
 @router.post("/verify_otp", response_model=Token)
 async def verify_otp_route(data: OTPVerify):
     """Verifies the OTP and returns a session token."""
+    from app.login_back.LoginFunctions import create_access_token, create_refresh_token, ACCESS_TOKEN_EXPIRE_MINUTES
     user = verify_otp_logic(data.email, data.otp)
     
     if not user:
