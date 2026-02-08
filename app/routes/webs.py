@@ -33,17 +33,36 @@ ticker_dic = {}
 
 async def update_initial_tickers():
     global ticker_dic
-    symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "BNBUSDT"]
+
+    coin_map = {
+        "BTCUSDT": "btc-bitcoin",
+        "ETHUSDT": "eth-ethereum",
+        "BNBUSDT": "bnb-bnb",
+        "XRPUSDT": "xrp-xrp",
+        "SOLUSDT": "sol-solana",
+        "DOGEUSDT": "doge-dogecoin",
+    }
+
+    prices = {}
+
     async with httpx.AsyncClient() as client:
-        for sym in symbols:
-            try:
-                resp = await client.get(f"https://api.binance.com/api/v3/ticker/24hr?symbol={sym}")
-                ticker_dic[f"BINANCE:{sym}"] = resp.json()
-            except Exception as e:
-                print(f"Error fetching ticker for {sym}: {e}")
+        for symbol, coin_id in coin_map.items():
+            url = f"https://api.coinpaprika.com/v1/coins/{coin_id}/ohlcv/today"
+            res = await client.get(url)
+            prices[symbol] = res.json()
+
+    ticker_dic = {
+        f"BINANCE:{symbol}": prices[symbol]
+        for symbol in prices
+    }
+
+    print(ticker_dic)
+
 
 @router.websocket("/ws/user/trades")
 async def order_ws(ws: WebSocket):
+
+    await update_initial_tickers()
     # Expect token as a query parameter: /ws/user/trades?token=eyJ...
     token = ws.query_params.get("token")
     if not token:
@@ -117,19 +136,15 @@ async def start_market_ws():
                         time_of_stockprice = ist_datetime.strftime("%H:%M:%S")
                         symbol = data["s"]
                         try:
-                            open_price = float(ticker_dic[symbol]['openPrice'])
+                            open_price = round((ticker_dic[symbol][0]['open']),2)
                         except:
                             open_price = 1
                         abs_change = absolute_change(last_price, open_price)
                         perc_change = (abs_change / open_price) * 100
                         payload = json.dumps({
                             "type": "send_stock_data",
-                            # try:
-                            #     "high": float(ticker_dic[symbol]['highPrice']),
-                            #     "low": float(ticker_dic[symbol]['lowPrice']),
-                            # except:
-                            "high": 1,
-                            "low": 1,
+                            "high": round((ticker_dic[symbol][0]['high']),2),
+                            "low": round((ticker_dic[symbol][0]['low']),2),
                             "openprice": open_price,
                             "last_price": last_price,
                             "date": str(date_of_stockprice),
