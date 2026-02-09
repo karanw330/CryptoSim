@@ -38,8 +38,8 @@ Create a `.env` file in the root directory with the following variables:
 ```env
 SECRET_KEY=your_secret_key_here
 ALGORITHM=your algorithm here
-ACCESS_TOKEN_EXPIRE_MINUTES=expiry time here
-# Add other environment variables as needed (e.g., Google Auth Client ID)
+FINNHUB_TOKEN= finnhub's api key for real time price stream
+CRYP_SIM_KEY= Google Auth Client ID
 ```
 
 ## 🚀 Getting Started
