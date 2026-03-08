@@ -9,6 +9,7 @@ A real-time cryptocurrency trading simulation platform built with a FastAPI back
 Check out the live application here: **[https://cryp-sim.vercel.app/](https://cryp-sim.vercel.app/)**
 
 > [!NOTE]
+> **Backend deploymentg is currently suspended**
 > **Backend Limitations**: The backend is hosted on Render's Free Tier. This means the server spins down after 15 minutes of inactivity and there is no database persistence. **The first request may take 50+ seconds to respond while the server wakes up and your data may get wiped when the server goes to sleep.** Please be patient!
 
 ## ✨ Features
