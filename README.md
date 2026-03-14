@@ -10,7 +10,6 @@ Check out the live application here: **[https://cryp-sim.vercel.app/](https://cr
 
 > [!NOTE]
 > [!WARNING]
-> **BACKEND DEPLOYMENT IS CURRENTLY SUSPENDED** <br><br>
 > **Backend Limitations**: The backend is hosted on Render's Free Tier. This means the server spins down after 15 minutes of inactivity and there is no database persistence. **The first request may take 50+ seconds to respond while the server wakes up and your data may get wiped when the server goes to sleep.** Please be patient!
 
 ## ✨ Features
